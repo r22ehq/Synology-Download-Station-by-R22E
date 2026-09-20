@@ -96,16 +96,35 @@ test.describe('Real NAS Integration Suite', () => {
     // Wait for the task to appear in the list
     await expect(page.getByText('ubuntu-22.04.3')).toBeVisible({ timeout: 10000 });
     
-    // 9. Pause
+    // 7. Create Magnet task
+    await page.getByRole('button', { name: /Add Task/i }).click();
+    await page.getByLabel(/URL/i).fill('magnet:?xt=urn:btih:3b45a6c6a2d9b15250438c82348ff98e72322eb6&dn=ubuntu-22.04.3-desktop-amd64.iso');
+    const magnetResponsePromise = page.waitForResponse(response => response.url().includes('DownloadStation/task.cgi') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Add' }).click();
+
+    try {
+      const response = await magnetResponsePromise;
+      const json = await response.json();
+      if (json && json.success && json.data && Array.isArray(json.data.task_ids)) {
+         json.data.task_ids.forEach((id: string) => createdTaskIds.add(id));
+      } else {
+         throw new Error('Could not parse task ID for magnet');
+      }
+    } catch (e) {
+      expect(true, 'Test aborted: Magnet task creation response could not be parsed to track ID for cleanup.').toBe(false);
+    }
+    await expect(page.getByText('ubuntu-22.04.3-desktop-amd64.iso')).toBeVisible({ timeout: 10000 });
+
+    // 9. Pause (testing on HTTP task)
     const taskCard = page.locator('.r22e-card').filter({ hasText: 'ubuntu-22.04.3' }).first();
     await taskCard.getByRole('button', { name: /Pause/i }).click();
     
     // 10. Resume
     await taskCard.getByRole('button', { name: /Resume/i }).click();
 
-    // 13. Delete created test task via UI
+    // 13. Delete created HTTP test task via UI
     await taskCard.getByRole('button', { name: /Delete/i }).click();
-    await expect(page.getByText('ubuntu-22.04.3')).toBeHidden({ timeout: 10000 });
+    await expect(page.getByText('ubuntu-22.04.3').first()).toBeHidden({ timeout: 10000 });
     
     // 14. Session recovery
     await page.reload();
