@@ -52,7 +52,7 @@ If you intend to run real NAS integration tests (`pnpm test:nas:preflight` and `
 Recommended account name: `r22e_test`
 - **Permissions**: Grant access to Download Station and only the specific File Station shared folder containing your `R22E_TEST_DESTINATION`.
 - **Role**: Standard user (no Administrator privileges).
-- **Security**: The automated test harness bypasses the extension's UI for teardown and cleanup using a direct Node.js HTTP client. Therefore, this dedicated test account must **NOT** have mandatory 2FA (OTP) enabled. (The extension's 2FA capabilities are validated separately).
+- **Security**: The automated test harness requires a dedicated `AuthClient` Node `fetch` to obtain a discrete test SID for foolproof teardown. Therefore, this dedicated test account must **NOT** have mandatory DSM 2FA (OTP) enabled for this automated harness. (The extension's native 2FA capabilities are validated in separate UI tests).
 - **Destination**: The test destination path must be exact and exist on the NAS. Never use your main download folder for destructive testing.
 
 ## Pull Request Process

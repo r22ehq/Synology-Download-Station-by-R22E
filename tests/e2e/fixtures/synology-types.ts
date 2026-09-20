@@ -28,7 +28,7 @@ export interface TaskInfo {
     detail?: TaskDetail;
     transfer?: {
       size_downloaded?: number;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
 }

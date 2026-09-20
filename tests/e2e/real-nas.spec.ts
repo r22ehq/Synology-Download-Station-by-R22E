@@ -3,69 +3,77 @@ import crypto from 'crypto';
 import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
-import { normalizeNasUrl } from '../../src/core/domain/connection/nas-url';
 import { TestResourceRegistry } from './fixtures/test-registry';
-import type { TaskListApiResponse } from './fixtures/synology-types';
+import type { TaskListApiResponse, EmptySuccessResponse, TaskInfo } from './fixtures/synology-types';
+import { loadRealNasTestConfig } from './fixtures/real-nas-config';
+import type { RealNasTestConfig } from './fixtures/real-nas-config';
 
 test.describe('Real NAS Integration Suite', () => {
-  const registry = new TestResourceRegistry();
+  const resourceRegistry = new TestResourceRegistry();
   let preExistingIds: string[] = [];
   let harnessSid: string;
-  let nasUrl: string;
-  let baseUrl: string;
-  let username: string;
+  
+  let httpClient: SynoHttpClient;
+  let taskEndpoint: string;
+  let taskVersion: number;
+  
+  let config: RealNasTestConfig | null = null;
 
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
 
   test.beforeAll(async () => {
-    nasUrl = normalizeNasUrl(process.env.R22E_TEST_NAS_URL!).baseUrl;
-    baseUrl = nasUrl;
-    username = process.env.R22E_TEST_USERNAME!;
-    const password = process.env.R22E_TEST_PASSWORD!;
+    config = loadRealNasTestConfig();
+    if (!config) return;
     
     // Independent harness auth
-    const httpClient = new SynoHttpClient();
+    httpClient = new SynoHttpClient();
     const discovery = new DiscoveryClient(httpClient);
-    const apiRegistry = await discovery.discoverApis(nasUrl);
+    const apiRegistry = await discovery.discoverApis(config.nasUrl);
     const auth = new AuthClient(httpClient);
-    const loginResult = await auth.login(nasUrl, apiRegistry, username, password, { format: 'sid' });
+    const loginResult = await auth.login(config.nasUrl, apiRegistry, config.username, config.password, { format: 'sid' });
     if (!loginResult.sid) throw new Error('Harness failed to authenticate');
     harnessSid = loginResult.sid;
 
+    // Resolve endpoints once
+    taskEndpoint = apiRegistry.resolveEndpoint('SYNO.DownloadStation.Task');
+    taskVersion = apiRegistry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
+
     // Capture pre-existing
-    const taskEndpoint = apiRegistry.resolveEndpoint('SYNO.DownloadStation.Task');
-    const taskVersion = apiRegistry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
-    const listRes = await httpClient.get<TaskListApiResponse>(nasUrl, taskEndpoint, {
+    const listRes = await httpClient.get<TaskListApiResponse>(config.nasUrl, taskEndpoint, {
       params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
       sid: harnessSid
     });
     preExistingIds = listRes.data?.tasks.map(t => t.id) || [];
   });
 
-  async function getTasks() {
-    const listUrl = `${baseUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=list&additional=detail&_sid=${harnessSid}`;
-    const listRes = await fetch(listUrl);
-    const listJson = await listRes.json();
-    if (!listJson.success) throw new Error(`Failed to list tasks: ${listJson.error?.code}`);
-    return listJson.data.tasks || [];
+  async function getTasks(): Promise<TaskInfo[]> {
+    if (!config) return [];
+    const listRes = await httpClient.get<TaskListApiResponse>(config.nasUrl, taskEndpoint, {
+      params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list', additional: 'detail' },
+      sid: harnessSid
+    });
+    if (!listRes.success) throw new Error(`Failed to list tasks: ${listRes.error?.code}`);
+    return listRes.data?.tasks || [];
   }
 
   test.afterAll(async () => {
-    const pending = registry.getPendingDeletions();
+    if (!config) return;
+    const pending = resourceRegistry.getPendingDeletions();
     if (pending.length === 0) return;
     
     try {
       const taskIds = pending.map(t => t.id).join(',');
-      const deleteUrl = `${baseUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=delete&id=${encodeURIComponent(taskIds)}&force_complete=true&_sid=${harnessSid}`;
-      const deleteRes = await fetch(deleteUrl);
-      const deleteJson = await deleteRes.json();
+      const deleteRes = await httpClient.get<EmptySuccessResponse>(config.nasUrl, taskEndpoint, {
+        params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'delete', id: taskIds, force_complete: 'true' },
+        sid: harnessSid
+      });
 
-      if (!deleteJson.success) {
-        throw new Error(`API delete command failed with code ${deleteJson.error?.code}`);
+      if (!deleteRes.success) {
+        throw new Error(`API delete command failed with code ${deleteRes.error?.code}`);
       }
 
       const tasks = await getTasks();
-      const remainingIds = new Set(tasks.map((t: any) => t.id));
+      const remainingIds = new Set(tasks.map((t) => t.id));
       const leakedIds = pending.map(t => t.id).filter(id => remainingIds.has(id));
 
       if (leakedIds.length > 0) {
@@ -73,31 +81,30 @@ test.describe('Real NAS Integration Suite', () => {
       }
       
       // Verify pre-existing IDs are not harmed
-      const missingPreExisting = preExistingIds.filter(id => !remainingIds.has(id) && !registry.getAll().find(r => r.id === id));
+      const missingPreExisting = preExistingIds.filter(id => !remainingIds.has(id) && !resourceRegistry.getAll().find(r => r.id === id));
       if (missingPreExisting.length > 0) {
          console.warn(`WARNING: Some pre-existing tasks were missing at teardown. This might be external NAS cleanup. Missing: ${missingPreExisting.join(',')}`);
       }
       
-      registry.clear();
-    } catch (err: any) {
+      resourceRegistry.clear();
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      expect(true, `FATAL CLEANUP FAILURE: ${msg}. Remaining task IDs: ${pending.map(t => t.id).join(',')}`).toBe(false);
+      throw new Error(`FATAL CLEANUP FAILURE: ${msg}. Remaining task IDs: ${pending.map(t => t.id).join(',')}`);
     }
   });
 
   test('end-to-end integration flow safely isolated', async ({ page, gotoOptions, gotoPopup }) => {
-    const password = process.env.R22E_TEST_PASSWORD!;
-    const destination = process.env.R22E_TEST_DESTINATION || '';
-    
+    if (!config) return;
+
     // Product path auth
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();
-    await page.getByLabel(/NAS URL/i).fill(nasUrl);
-    await page.getByLabel(/Username/i).fill(username);
+    await page.getByLabel(/NAS URL/i).fill(config.nasUrl);
+    await page.getByLabel(/Username/i).fill(config.username);
     await page.getByRole('button', { name: 'Save Profile' }).click();
     
     await gotoPopup(page);
-    await page.getByLabel(/Password/i).fill(password);
+    await page.getByLabel(/Password/i).fill(config.password);
     await page.getByRole('button', { name: 'Login' }).click();
     
     // Wait for UI success instead of network SID
@@ -106,31 +113,34 @@ test.describe('Real NAS Integration Suite', () => {
 
     // 1. HTTP Task
     let currentTasks = await getTasks();
-    let preTaskIds = new Set(currentTasks.map((t: any) => t.id));
+    let preTaskIds = new Set(currentTasks.map((t) => t.id));
     
     const uniqueNonce = Math.random().toString(36).substring(2, 10);
     const testUrl = `https://proof.ovh.net/robots.txt?r22e-e2e=${uniqueNonce}`;
 
     await page.getByRole('button', { name: /Add Task/i }).click();
     await page.getByLabel(/URL/i).fill(testUrl);
-    if (destination) {
-      await page.getByLabel(/Destination/i).fill(destination);
+    if (config.destination) {
+      await page.getByLabel(/Destination/i).fill(config.destination);
     }
     await page.getByRole('button', { name: 'Add' }).click();
     
     let discoveredHttpId: string | null = null;
     await expect.poll(async () => {
       const latestTasks = await getTasks();
-      const exactMatches = latestTasks.filter((t: any) => t.additional?.detail?.uri === testUrl && !preTaskIds.has(t.id));
+      const exactMatches = latestTasks.filter((t) => t.additional?.detail?.uri === testUrl && !preTaskIds.has(t.id));
+      if (exactMatches.length > 1) {
+         throw new Error(`Ambiguous task discovery: found ${exactMatches.length} tasks matching URL ${testUrl}`);
+      }
       if (exactMatches.length === 1) {
-        discoveredHttpId = exactMatches[0].id;
+        discoveredHttpId = exactMatches[0]!.id;
         return true;
       }
-      return exactMatches.length > 1 ? false : false; // Fail implicitly on multiple? Timeout will catch.
+      return false;
     }, { message: 'Failed to discover unique HTTP task by URL', timeout: 15000 }).toBe(true);
 
     expect(discoveredHttpId).toBeTruthy();
-    registry.add({ id: discoveredHttpId!, kind: 'http', uri: testUrl, destination });
+    resourceRegistry.add({ id: discoveredHttpId!, kind: 'http', uri: testUrl, destination: config.destination });
 
     // Verify UI Deletion works and removes from server
     const httpTaskCard = page.locator('.r22e-card').filter({ hasText: 'robots.txt' }).first();
@@ -140,14 +150,14 @@ test.describe('Real NAS Integration Suite', () => {
     // Verify absent on server
     await expect.poll(async () => {
       const latestTasks = await getTasks();
-      return !latestTasks.some((t: any) => t.id === discoveredHttpId);
+      return !latestTasks.some((t) => t.id === discoveredHttpId);
     }, { message: 'Failed to verify HTTP task server deletion', timeout: 10000 }).toBe(true);
     
-    registry.markDeleted(discoveredHttpId!);
+    resourceRegistry.markDeleted(discoveredHttpId!);
 
     // 2. Magnet Task (Random valid BTIH)
     currentTasks = await getTasks();
-    preTaskIds = new Set(currentTasks.map((t: any) => t.id));
+    preTaskIds = new Set(currentTasks.map((t) => t.id));
     
     const randomHex = crypto.randomBytes(20).toString('hex');
     const magnetTitle = `r22e-e2e-magnet-${uniqueNonce}`;
@@ -155,24 +165,27 @@ test.describe('Real NAS Integration Suite', () => {
     
     await page.getByRole('button', { name: /Add Task/i }).click();
     await page.getByLabel(/URL/i).fill(magnetUri);
-    if (destination) {
-      await page.getByLabel(/Destination/i).fill(destination);
+    if (config.destination) {
+      await page.getByLabel(/Destination/i).fill(config.destination);
     }
     await page.getByRole('button', { name: 'Add' }).click();
 
     let discoveredMagnetId: string | null = null;
     await expect.poll(async () => {
       const latestTasks = await getTasks();
-      const exactMatches = latestTasks.filter((t: any) => t.additional?.detail?.uri === magnetUri && !preTaskIds.has(t.id));
+      const exactMatches = latestTasks.filter((t) => t.additional?.detail?.uri === magnetUri && !preTaskIds.has(t.id));
+      if (exactMatches.length > 1) {
+         throw new Error(`Ambiguous task discovery: found ${exactMatches.length} tasks matching magnet ${magnetUri}`);
+      }
       if (exactMatches.length === 1) {
-        discoveredMagnetId = exactMatches[0].id;
+        discoveredMagnetId = exactMatches[0]!.id;
         return true;
       }
       return false;
     }, { message: 'Failed to discover unique Magnet task by URI', timeout: 15000 }).toBe(true);
 
     expect(discoveredMagnetId).toBeTruthy();
-    registry.add({ id: discoveredMagnetId!, kind: 'magnet', uri: magnetUri, destination });
+    resourceRegistry.add({ id: discoveredMagnetId!, kind: 'magnet', uri: magnetUri, destination: config.destination });
 
     const magnetTaskCard = page.locator('.r22e-card').filter({ hasText: magnetTitle }).first();
     

@@ -2,22 +2,19 @@ import { test, expect } from './fixtures/extension';
 import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
-import { normalizeNasUrl } from '../../src/core/domain/connection/nas-url';
 import type { FileStationListResponse, TaskListApiResponse, EmptySuccessResponse } from './fixtures/synology-types';
+import { loadRealNasTestConfig } from './fixtures/real-nas-config';
 
 test.describe('Real NAS Preflight Check', () => {
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
 
   test('verifies connection, capabilities, and destination exist (read-only)', async () => {
-    const rawUrl = process.env.R22E_TEST_NAS_URL!;
-    const username = process.env.R22E_TEST_USERNAME!;
-    const password = process.env.R22E_TEST_PASSWORD!;
-    const destination = process.env.R22E_TEST_DESTINATION;
+    const config = loadRealNasTestConfig();
+    expect(config, 'Config must be loaded since we did not skip').toBeDefined();
+    if (!config) return;
 
-    expect(destination, 'A dedicated R22E_TEST_DESTINATION is strictly required for destructive testing').toBeDefined();
-    expect(destination?.length).toBeGreaterThan(0);
+    const { nasUrl, username, password, destination } = config;
 
-    const nasUrl = normalizeNasUrl(rawUrl).baseUrl;
     const httpClient = new SynoHttpClient();
     const discoveryClient = new DiscoveryClient(httpClient);
 
@@ -29,7 +26,7 @@ test.describe('Real NAS Preflight Check', () => {
 
     const authClient = new AuthClient(httpClient);
     const loginResult = await authClient.login(nasUrl, registry, username, password, { format: 'sid' });
-    expect(loginResult.sid, 'Login must yield a valid SID (2FA is unsupported for automated teardown bypass)').toBeDefined();
+    expect(loginResult.sid, 'Login must yield a valid SID (2FA is unsupported for automated destructive test accounts)').toBeDefined();
     
     // Validate we actually have Download Station access
     const taskEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Task');
@@ -53,7 +50,7 @@ test.describe('Real NAS Preflight Check', () => {
     const fsVersion = registry.getNegotiatedVersion('SYNO.FileStation.List', 1);
     
     // Ensure the folder exactly exists
-    const destPath = destination as string;
+    const destPath = destination;
     const fsListFolderRes = await httpClient.get<FileStationListResponse>(nasUrl, fsEndpoint, { 
       params: {
         api: 'SYNO.FileStation.List',

@@ -1,6 +1,7 @@
 import http from 'http';
 import url from 'url';
 import type { TaskInfo } from './synology-types';
+import type { ParsedUrlQuery } from 'querystring';
 
 export class MockNasServer {
   private server: http.Server;
@@ -8,7 +9,7 @@ export class MockNasServer {
   public state: {
     authStatus: 'SUCCESS' | 'OTP_REQUIRED' | 'INVALID_CREDENTIALS' | 'SESSION_EXPIRED';
     tasks: TaskInfo[];
-    statistics: any;
+    statistics: Record<string, unknown>;
     requireDeviceToken: boolean;
     validDid: string | null;
   };
@@ -25,7 +26,7 @@ export class MockNasServer {
     };
     this.requestCounts = {};
 
-    this.server = http.createServer((req: any, res: any) => {
+    this.server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', '*');
@@ -41,10 +42,10 @@ export class MockNasServer {
       this.requestCounts[pathname] = (this.requestCounts[pathname] || 0) + 1;
       
       let body = '';
-      req.on('data', (chunk: any) => { body += chunk.toString(); });
+      req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
       req.on('end', () => {
         const query = parsedUrl.query;
-        let params = new URLSearchParams(body || '');
+        const params = new URLSearchParams(body || '');
         const api = query.api || params.get('api') || '';
         const method = query.method || params.get('method') || '';
 
@@ -96,7 +97,7 @@ export class MockNasServer {
     this.requestCounts = {};
   }
 
-  private handleRequest(api: string, method: string, query: any, postParams: URLSearchParams) {
+  private handleRequest(api: string, method: string, query: ParsedUrlQuery, postParams: URLSearchParams) {
     if (api === 'SYNO.API.Info' && method === 'query') {
       return {
         success: true,
@@ -137,8 +138,8 @@ export class MockNasServer {
         return { success: true, data: { tasks: this.state.tasks, total: this.state.tasks.length } };
       }
       if (method === 'create') {
-        const uri = query.uri || postParams.get('uri') || '';
-        const destination = query.destination || postParams.get('destination') || '';
+        const uri = (query.uri as string) || postParams.get('uri') || '';
+        const destination = (query.destination as string) || postParams.get('destination') || '';
         const newId = `dbid_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         
         // Derive title from URI (naive logic for mock)
@@ -162,7 +163,7 @@ export class MockNasServer {
         return { success: true };
       }
       if (method === 'delete') {
-        const idsParam = query.id || postParams.get('id');
+        const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToDelete = idsParam.split(',');
           this.state.tasks = this.state.tasks.filter(t => !idsToDelete.includes(t.id));
@@ -170,7 +171,7 @@ export class MockNasServer {
         return { success: true, data: [] };
       }
       if (method === 'pause') {
-        const idsParam = query.id || postParams.get('id');
+        const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToPause = idsParam.split(',');
           this.state.tasks = this.state.tasks.map(t => idsToPause.includes(t.id) ? { ...t, status: 'paused' } : t);
@@ -178,7 +179,7 @@ export class MockNasServer {
         return { success: true };
       }
       if (method === 'resume') {
-        const idsParam = query.id || postParams.get('id');
+        const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToResume = idsParam.split(',');
           this.state.tasks = this.state.tasks.map(t => idsToResume.includes(t.id) ? { ...t, status: 'downloading' } : t);
@@ -196,7 +197,7 @@ export class MockNasServer {
         return { success: true, data: { shares: [{ path: '/volume1/downloads', name: 'downloads', isdir: true }] } };
       }
       if (method === 'list') {
-        const folderPath = query.folder_path || postParams.get('folder_path') || '';
+        const folderPath = (query.folder_path as string) || postParams.get('folder_path') || '';
         // Mock successful list if path is valid, else return missing
         if (folderPath === '/volume1/downloads' || folderPath.startsWith('/volume1/downloads/')) {
           return { success: true, data: { files: [] } };

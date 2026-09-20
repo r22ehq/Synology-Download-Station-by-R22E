@@ -54,7 +54,7 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
       throw new Error(`Failed to list tasks for cleanup verification, code: ${listJson.error?.code}`);
     }
 
-    const remainingIds = new Set(listJson.data.tasks.map((t: any) => t.id));
+    const remainingIds = new Set(listJson.data.tasks.map((t: { id: string }) => t.id));
     const leakedIds = pending.map(t => t.id).filter(id => remainingIds.has(id));
 
     if (leakedIds.length > 0) {
@@ -100,8 +100,8 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
     let caughtError: Error | undefined;
     try {
       await runCleanup(registry, 'admin', 'super_secret_password');
-    } catch (e: any) {
-      caughtError = e;
+    } catch (e: unknown) {
+      caughtError = e instanceof Error ? e : new Error(String(e));
     }
     
     expect(caughtError).toBeDefined();
@@ -129,8 +129,8 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
     let caughtError: Error | undefined;
     try {
       await runCleanup(registry);
-    } catch (e: any) {
-      caughtError = e;
+    } catch (e: unknown) {
+      caughtError = e instanceof Error ? e : new Error(String(e));
     }
     
     expect(caughtError).toBeDefined();
