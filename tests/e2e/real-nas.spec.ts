@@ -43,16 +43,29 @@ test.describe('Real NAS Integration Suite', () => {
     // Expect to see some form of speed/stats or task list loaded
     await expect(page.getByRole('button', { name: /Add Task/i })).toBeVisible();
 
-    // 6. Create HTTP task
+    // 6. Create HTTP task and intercept the response to capture the real task ID
     await page.getByRole('button', { name: /Add Task/i }).click();
-    // Test URL for an ubuntu ISO or a safe small test file
     await page.getByLabel(/URL/i).fill('https://releases.ubuntu.com/22.04.3/ubuntu-22.04.3-live-server-amd64.iso.zsync');
     if (destination) {
       await page.getByLabel(/Destination/i).fill(destination);
     }
+    
+    const responsePromise = page.waitForResponse(response => response.url().includes('DownloadStation/task.cgi') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Add' }).click();
     
-    // Wait for the task to appear in the list (indicates creation success)
+    // Attempt to extract the task ID from the creation response to ensure safe cleanup
+    try {
+      const response = await responsePromise;
+      const json = await response.json();
+      if (json && json.success && json.data && json.data.task_ids) {
+         createdTaskIds.push(...json.data.task_ids);
+         console.log(`[Test] Created task IDs: ${json.data.task_ids.join(', ')}`);
+      }
+    } catch (e) {
+      console.warn('[Test] Could not parse task creation response to record ID for cleanup.', e);
+    }
+    
+    // Wait for the task to appear in the list
     await expect(page.getByText('ubuntu-22.04.3')).toBeVisible({ timeout: 10000 });
     
     // 9. Pause
@@ -63,10 +76,11 @@ test.describe('Real NAS Integration Suite', () => {
     await taskCard.getByRole('button', { name: /Resume/i }).click();
 
     // 13. Delete created test task
-    // We only delete tasks we created to avoid harming the user's real data
     await taskCard.getByRole('button', { name: /Delete/i }).click();
-    // Wait for it to disappear
     await expect(page.getByText('ubuntu-22.04.3')).toBeHidden({ timeout: 10000 });
+    
+    // Clear tracked IDs since we just deleted it successfully via UI
+    createdTaskIds = [];
 
     // 14. Session recovery
     // Reload the extension popup to verify session is restored without re-login
