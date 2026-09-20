@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@playwright/*"
+          - "eslint*"
+          - "prettier"
+      dev-dependencies:
+        dependency-type: development
+        patterns:
+          - "eslint*"
+          - "prettier"
+          - "@playwright/*"

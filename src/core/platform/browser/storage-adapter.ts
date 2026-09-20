@@ -1,0 +1,43 @@
+import { browser } from 'wxt/browser';
+
+export async function restrictStorageToTrustedContexts(): Promise<void> {
+  try {
+    if (typeof browser === 'undefined') return;
+
+    // Local storage
+    if (browser.storage && browser.storage.local) {
+      const local = browser.storage.local as unknown as Record<string, unknown>;
+      if (typeof local.setAccessLevel === 'function') {
+        try {
+          // Chromium signature
+          await (local as any).setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+        } catch {
+          try {
+            // WebExtensions / Firefox signature fallback
+            await (local as any).setAccessLevel('TRUSTED_CONTEXTS');
+          } catch (e) {
+            console.warn('[R22E] Failed to restrict local storage access level', e);
+          }
+        }
+      }
+    }
+
+    // Session storage
+    if (browser.storage && browser.storage.session) {
+      const session = browser.storage.session as unknown as Record<string, unknown>;
+      if (typeof session.setAccessLevel === 'function') {
+        try {
+          await (session as any).setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+        } catch {
+          try {
+            await (session as any).setAccessLevel('TRUSTED_CONTEXTS');
+          } catch (e) {
+            console.warn('[R22E] Failed to restrict session storage access level', e);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore global errors to prevent blocking extension startup
+  }
+}

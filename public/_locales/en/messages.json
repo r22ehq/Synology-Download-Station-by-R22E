@@ -1,0 +1,120 @@
+{
+  "extensionName": {
+    "message": "Synology Download Station by R22E",
+    "description": "The display name of the extension"
+  },
+  "extensionDescription": {
+    "message": "Manage Synology Download Station directly from your browser. Add magnet links, torrents and URLs, monitor downloads and control your Synology NAS.",
+    "description": "The description of the extension"
+  },
+  "appShortName": {
+    "message": "R22E Station",
+    "description": "Short name used in compact UI"
+  },
+  "connectionTitle": {
+    "message": "Connection",
+    "description": "Connection settings section title"
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "Settings page title"
+  },
+  "loginButton": {
+    "message": "Log In",
+    "description": "Login button label"
+  },
+  "logoutButton": {
+    "message": "Log Out",
+    "description": "Logout button label"
+  },
+  "testConnection": {
+    "message": "Test Connection",
+    "description": "Test connection button label"
+  },
+  "addTask": {
+    "message": "Add Task",
+    "description": "Add download task button label"
+  },
+  "pause": {
+    "message": "Pause",
+    "description": "Pause task action"
+  },
+  "resume": {
+    "message": "Resume",
+    "description": "Resume task action"
+  },
+  "delete": {
+    "message": "Delete",
+    "description": "Delete task action"
+  },
+  "search": {
+    "message": "Search",
+    "description": "Search placeholder"
+  },
+  "noTasks": {
+    "message": "No download tasks",
+    "description": "Empty task list message"
+  },
+  "connecting": {
+    "message": "Connecting...",
+    "description": "Connection in progress"
+  },
+  "connected": {
+    "message": "Connected",
+    "description": "Successfully connected"
+  },
+  "disconnected": {
+    "message": "Disconnected",
+    "description": "Not connected"
+  },
+  "errorUnreachable": {
+    "message": "NAS unreachable",
+    "description": "Cannot reach NAS error"
+  },
+  "errorAuthFailed": {
+    "message": "Authentication failed",
+    "description": "Login failed error"
+  },
+  "errorOtpRequired": {
+    "message": "Two-factor authentication code required",
+    "description": "2FA OTP needed"
+  },
+  "errorSessionExpired": {
+    "message": "Session expired. Please log in again.",
+    "description": "Session timeout error"
+  },
+  "destination": {
+    "message": "Destination",
+    "description": "Download destination folder"
+  },
+  "downloadSpeed": {
+    "message": "Download",
+    "description": "Download speed label"
+  },
+  "uploadSpeed": {
+    "message": "Upload",
+    "description": "Upload speed label"
+  },
+  "contextMenuDownload": {
+    "message": "Download with R22E Station",
+    "description": "Context menu item for downloading a link"
+  },
+  "contextMenuDownloadTo": {
+    "message": "Download to $1",
+    "description": "Context menu item with destination",
+    "placeholders": {
+      "1": {
+        "content": "$1",
+        "example": "Downloads"
+      }
+    }
+  },
+  "notificationComplete": {
+    "message": "Download Complete",
+    "description": "Notification title for completed download"
+  },
+  "notificationFailed": {
+    "message": "Download Failed",
+    "description": "Notification title for failed download"
+  }
+}

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.output/
+.wxt/
+dist/
+
+# Packaged extensions
+*.zip
+*.crx
+*.xpi
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage/
+test-results/
+playwright-report/
+tests/e2e/screenshots/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# AI/Agent artifacts
+.gemini/

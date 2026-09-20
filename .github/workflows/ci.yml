@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit Tests
+        run: pnpm test
+
+  build:
+    name: Build (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    needs: quality
+    strategy:
+      matrix:
+        browser: [chrome, firefox, edge, opera]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build for ${{ matrix.browser }}
+        run: pnpm build:${{ matrix.browser }}
+
+      - name: Verify production manifest
+        if: matrix.browser == 'chrome'
+        run: |
+          node -e "
+            const m = require('./.output/chrome-mv3/manifest.json');
+            const perms = JSON.stringify(m.permissions || []);
+            const hostPerms = JSON.stringify(m.host_permissions || []);
+            if (perms.includes('http://127.0.0.1') || perms.includes('http://localhost')) {
+              console.error('FAIL: Production manifest contains test-only permissions');
+              process.exit(1);
+            }
+            if (hostPerms.includes('<all_urls>')) {
+              console.error('FAIL: Production manifest contains <all_urls>');
+              process.exit(1);
+            }
+            console.log('Production manifest verified: no test-only permissions');
+          "
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.browser }}-build
+          path: .output/${{ matrix.browser == 'chrome' && 'chrome-mv3' || matrix.browser == 'firefox' && 'firefox-mv3' || matrix.browser == 'edge' && 'edge-mv3' || 'opera-mv3' }}/
+          retention-days: 7
+
+  e2e:
+    name: E2E Tests (Chromium)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Build for E2E
+        run: pnpm build:chrome
+        env:
+          R22E_E2E: '1'
+
+      - name: Run Playwright tests
+        run: pnpm exec playwright test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
