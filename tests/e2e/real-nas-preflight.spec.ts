@@ -3,16 +3,7 @@ import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
 import { normalizeNasUrl } from '../../src/core/domain/connection/nas-url';
-
-interface FileStationShare {
-  path: string;
-  name: string;
-  isdir: boolean;
-}
-
-interface FileStationListResponse {
-  shares?: FileStationShare[];
-}
+import type { FileStationListResponse, TaskListApiResponse, EmptySuccessResponse } from './fixtures/synology-types';
 
 test.describe('Real NAS Preflight Check', () => {
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
@@ -34,33 +25,47 @@ test.describe('Real NAS Preflight Check', () => {
     expect(registry, 'API discovery must succeed').toBeDefined();
     expect(registry.isAvailable('SYNO.API.Auth'), 'Auth API must be available').toBe(true);
     expect(registry.isAvailable('SYNO.DownloadStation.Task'), 'Download Station Task API must be available').toBe(true);
+    expect(registry.isAvailable('SYNO.DownloadStation.Statistic'), 'Download Station Statistic API must be available').toBe(true);
 
     const authClient = new AuthClient(httpClient);
     const loginResult = await authClient.login(nasUrl, registry, username, password, { format: 'sid' });
     expect(loginResult.sid, 'Login must yield a valid SID (2FA is unsupported for automated teardown bypass)').toBeDefined();
     
-    expect(registry.isAvailable('SYNO.FileStation.List'), 'FileStation List API must be available to test destination').toBe(true);
+    // Validate we actually have Download Station access
+    const taskEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Task');
+    const taskVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
+    const listRes = await httpClient.get<TaskListApiResponse>(nasUrl, taskEndpoint, {
+      params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
+      sid: loginResult.sid
+    });
+    expect(listRes.success, 'Download Station Task list must succeed').toBe(true);
+    
+    const statEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Statistic');
+    const statVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Statistic', 1);
+    const statRes = await httpClient.get<EmptySuccessResponse>(nasUrl, statEndpoint, {
+      params: { api: 'SYNO.DownloadStation.Statistic', version: statVersion.toString(), method: 'getinfo' },
+      sid: loginResult.sid
+    });
+    expect(statRes.success, 'Download Station Statistic info must succeed').toBe(true);
 
-    const endpoint = registry.resolveEndpoint('SYNO.FileStation.List');
-    const version = registry.getNegotiatedVersion('SYNO.FileStation.List', 1);
-    const fsRes = await httpClient.get<FileStationListResponse>(nasUrl, endpoint, { 
+    expect(registry.isAvailable('SYNO.FileStation.List'), 'FileStation List API must be available to test destination').toBe(true);
+    const fsEndpoint = registry.resolveEndpoint('SYNO.FileStation.List');
+    const fsVersion = registry.getNegotiatedVersion('SYNO.FileStation.List', 1);
+    
+    // Ensure the folder exactly exists
+    const destPath = destination as string;
+    const fsListFolderRes = await httpClient.get<FileStationListResponse>(nasUrl, fsEndpoint, { 
       params: {
         api: 'SYNO.FileStation.List',
-        version: version.toString(),
-        method: 'list_share'
+        version: fsVersion.toString(),
+        method: 'list',
+        folder_path: destPath
       }, 
       sid: loginResult.sid 
     });
     
-    expect(fsRes, 'File station listing must succeed').toBeDefined();
+    expect(fsListFolderRes.success, `Destination "${destPath}" must exist and be accessible`).toBe(true);
     
-    const shares = fsRes.shares || [];
-    const destPath = destination as string;
-    
-    // Validate the destination is inside one of the shares the user can read
-    const hasDest = shares.some((s) => destPath === s.path || destPath.startsWith(s.path + '/'));
-    expect(hasDest, `Destination "${destPath}" must exist within accessible shared folders`).toBe(true);
-    
-    console.log(`[Preflight] NAS ${nasUrl} verified. Read-only check passed. Destination [${destPath}] accepted.`);
+    console.log(`[Preflight] NAS connection verified. Dedicated test destination is accessible.`);
   });
 });

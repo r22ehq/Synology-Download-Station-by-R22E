@@ -1,12 +1,13 @@
 import http from 'http';
 import url from 'url';
+import type { TaskInfo } from './synology-types';
 
 export class MockNasServer {
   private server: http.Server;
   private port: number;
   public state: {
     authStatus: 'SUCCESS' | 'OTP_REQUIRED' | 'INVALID_CREDENTIALS' | 'SESSION_EXPIRED';
-    tasks: any[];
+    tasks: TaskInfo[];
     statistics: any;
     requireDeviceToken: boolean;
     validDid: string | null;
@@ -30,14 +31,11 @@ export class MockNasServer {
       res.setHeader('Access-Control-Allow-Headers', '*');
 
       if (req.method === 'OPTIONS') {
-        const headers = {};
-        res.writeHead(204, headers);
+        res.writeHead(204, {});
         res.end();
         return;
       }
       
-      console.log(`[MOCK NAS] ${req.method} ${req.url}`);
-
       const parsedUrl = url.parse(req.url || '', true);
       const pathname = parsedUrl.pathname || '';
       this.requestCounts[pathname] = (this.requestCounts[pathname] || 0) + 1;
@@ -46,7 +44,6 @@ export class MockNasServer {
       req.on('data', (chunk: any) => { body += chunk.toString(); });
       req.on('end', () => {
         const query = parsedUrl.query;
-        // Merge POST body as query (simplified for mock)
         let params = new URLSearchParams(body || '');
         const api = query.api || params.get('api') || '';
         const method = query.method || params.get('method') || '';
@@ -117,43 +114,51 @@ export class MockNasServer {
       const otpCode = query.otp_code || postParams.get('otp_code');
       const did = query.device_id || postParams.get('device_id');
       
-      if (this.state.authStatus === 'INVALID_CREDENTIALS') {
-        return { success: false, error: { code: 400 } };
-      }
-      
+      if (this.state.authStatus === 'INVALID_CREDENTIALS') return { success: false, error: { code: 400 } };
       if (this.state.authStatus === 'OTP_REQUIRED') {
         if (!otpCode) {
           if (this.state.validDid && did === this.state.validDid) {
-             // Valid remembered device bypasses OTP
              return { success: true, data: { sid: 'mock-sid-123', did: this.state.validDid } };
           }
-          return { success: false, error: { code: 403 } }; // 403 is OTP required in Synology
+          return { success: false, error: { code: 403 } };
         }
-        if (otpCode !== '123456') {
-          return { success: false, error: { code: 404 } }; // Mocking wrong OTP
-        }
+        if (otpCode !== '123456') return { success: false, error: { code: 404 } };
         return { success: true, data: { sid: 'mock-sid-123', did: 'test-valid-did' } };
       }
-
       return { success: true, data: { sid: 'mock-sid-123', did: 'test-valid-did' } };
     }
 
-    if (api === 'SYNO.API.Auth' && method === 'logout') {
-      return { success: true };
-    }
+    if (api === 'SYNO.API.Auth' && method === 'logout') return { success: true };
 
-    // Require Auth for DS API
-    // const _sid = query._sid || postParams.get('_sid');
-    // We could strictly enforce _sid check here if we want, but for now we'll allow it if authStatus isn't SESSION_EXPIRED
-    if (this.state.authStatus === 'SESSION_EXPIRED') {
-      return { success: false, error: { code: 119 } }; // 119 = session expired
-    }
+    if (this.state.authStatus === 'SESSION_EXPIRED') return { success: false, error: { code: 119 } };
 
     if (api === 'SYNO.DownloadStation.Task') {
       if (method === 'list') {
         return { success: true, data: { tasks: this.state.tasks, total: this.state.tasks.length } };
       }
       if (method === 'create') {
+        const uri = query.uri || postParams.get('uri') || '';
+        const destination = query.destination || postParams.get('destination') || '';
+        const newId = `dbid_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        // Derive title from URI (naive logic for mock)
+        let title = 'mock-task';
+        if (uri) {
+           const match = uri.match(/dn=([^&]+)/);
+           if (match) {
+             title = decodeURIComponent(match[1]);
+           } else {
+             title = uri.split('/').pop() || 'mock-task';
+           }
+        }
+        
+        this.state.tasks.push({
+          id: newId,
+          title: title,
+          status: 'downloading',
+          additional: { detail: { uri, destination } }
+        });
+        
         return { success: true };
       }
       if (method === 'delete') {
@@ -164,14 +169,40 @@ export class MockNasServer {
         }
         return { success: true, data: [] };
       }
+      if (method === 'pause') {
+        const idsParam = query.id || postParams.get('id');
+        if (idsParam) {
+          const idsToPause = idsParam.split(',');
+          this.state.tasks = this.state.tasks.map(t => idsToPause.includes(t.id) ? { ...t, status: 'paused' } : t);
+        }
+        return { success: true };
+      }
+      if (method === 'resume') {
+        const idsParam = query.id || postParams.get('id');
+        if (idsParam) {
+          const idsToResume = idsParam.split(',');
+          this.state.tasks = this.state.tasks.map(t => idsToResume.includes(t.id) ? { ...t, status: 'downloading' } : t);
+        }
+        return { success: true };
+      }
     }
 
     if (api === 'SYNO.DownloadStation.Statistic' && method === 'getinfo') {
       return { success: true, data: this.state.statistics };
     }
 
-    if (api === 'SYNO.FileStation.List' && method === 'list_share') {
-      return { success: true, data: { shares: [{ path: '/volume1/downloads', name: 'downloads', isdir: true }] } };
+    if (api === 'SYNO.FileStation.List') {
+      if (method === 'list_share') {
+        return { success: true, data: { shares: [{ path: '/volume1/downloads', name: 'downloads', isdir: true }] } };
+      }
+      if (method === 'list') {
+        const folderPath = query.folder_path || postParams.get('folder_path') || '';
+        // Mock successful list if path is valid, else return missing
+        if (folderPath === '/volume1/downloads' || folderPath.startsWith('/volume1/downloads/')) {
+          return { success: true, data: { files: [] } };
+        }
+        return { success: false, error: { code: 408 } }; // 408 is No Such File or Directory in File Station
+      }
     }
 
     return { success: false, error: { code: 101, message: 'API/Method not mocked' } };

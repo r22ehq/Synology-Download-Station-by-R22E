@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MockNasServer } from './fixtures/mock-server';
+import { TestResourceRegistry } from './fixtures/test-registry';
 
 test.describe('Real NAS Cleanup Harness Verification', () => {
   let mockServer: MockNasServer;
@@ -8,7 +9,7 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
   test.beforeAll(async () => {
     mockServer = new MockNasServer();
     await mockServer.start();
-    serverUrl = `http://127.0.0.1:${(mockServer as any).port}`;
+    serverUrl = mockServer.getUrl();
   });
 
   test.afterAll(async () => {
@@ -16,12 +17,14 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
   });
 
   test.beforeEach(() => {
-    mockServer.state.authStatus = 'SUCCESS';
-    mockServer.state.tasks = [];
+    mockServer.reset();
   });
 
   // Extract the exact cleanup logic into a helper we can test
-  async function runCleanup(trackedIds: Set<string>, username = 'admin', password = 'password', fakeActiveSid?: string) {
+  async function runCleanup(registry: TestResourceRegistry, username = 'admin', password = 'password', fakeActiveSid?: string) {
+    const pending = registry.getPendingDeletions();
+    if (pending.length === 0) return;
+
     let sid = fakeActiveSid;
     if (!sid) {
       const authUrl = `${serverUrl}/webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login&account=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&session=DownloadStation&format=sid`;
@@ -34,7 +37,7 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
       sid = authJson.data.sid;
     }
     
-    const taskIds = Array.from(trackedIds).join(',');
+    const taskIds = pending.map(t => t.id).join(',');
     const deleteUrl = `${serverUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=delete&id=${encodeURIComponent(taskIds)}&force_complete=true&_sid=${sid}`;
     const deleteRes = await fetch(deleteUrl);
     const deleteJson = await deleteRes.json();
@@ -52,52 +55,56 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
     }
 
     const remainingIds = new Set(listJson.data.tasks.map((t: any) => t.id));
-    const leakedIds = Array.from(trackedIds).filter(id => remainingIds.has(id));
+    const leakedIds = pending.map(t => t.id).filter(id => remainingIds.has(id));
 
     if (leakedIds.length > 0) {
       throw new Error(`Task deletion verified failed! Leaked task IDs remaining on NAS: ${leakedIds.join(', ')}`);
     }
     
-    trackedIds.clear();
+    pending.forEach(t => registry.markDeleted(t.id));
   }
 
   test('verifies cleanup logic only deletes tracked IDs and handles already-absent', async () => {
     mockServer.state.tasks = [
-      { id: 'dbid_1', title: 'User Data 1' },
-      { id: 'dbid_2', title: 'User Data 2' },
-      { id: 'dbid_test_1', title: 'Test Task 1' },
+      { id: 'dbid_1', title: 'User Data 1', status: 'downloading' },
+      { id: 'dbid_2', title: 'User Data 2', status: 'downloading' },
+      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading' },
     ];
     
-    // Notice dbid_test_2 is already absent
-    const createdTaskIds = new Set(['dbid_test_1', 'dbid_test_2']);
+    const registry = new TestResourceRegistry();
+    registry.add({ id: 'dbid_test_1', kind: 'http', uri: 'http://test', destination: '' });
+    // Notice dbid_test_2 is already absent from server
+    registry.add({ id: 'dbid_test_2', kind: 'magnet', uri: 'magnet:?test', destination: '' });
     
-    await runCleanup(createdTaskIds);
+    await runCleanup(registry);
 
     // Verify the mock server state
     expect(mockServer.state.tasks.length).toBe(2);
-    expect(mockServer.state.tasks[0].id).toBe('dbid_1');
-    expect(mockServer.state.tasks[1].id).toBe('dbid_2');
+    expect(mockServer.state.tasks[0]!.id).toBe('dbid_1');
+    expect(mockServer.state.tasks[1]!.id).toBe('dbid_2');
     
-    expect(createdTaskIds.size).toBe(0);
+    expect(registry.getPendingDeletions().length).toBe(0);
     
     // Duplicate cleanup remains safe
-    await runCleanup(new Set(['dbid_test_1']));
+    registry.add({ id: 'dbid_test_1', kind: 'http', uri: 'http://test', destination: '' });
+    await runCleanup(registry);
     expect(mockServer.state.tasks.length).toBe(2);
   });
   
   test('cleanup authentication failure causes failure without leaking credentials', async () => {
     mockServer.state.authStatus = 'INVALID_CREDENTIALS';
     
-    const createdTaskIds = new Set(['dbid_test_1']);
+    const registry = new TestResourceRegistry();
+    registry.add({ id: 'dbid_test_1', kind: 'http', uri: 'http://test', destination: '' });
     
-    let caughtError: Error | null = null;
+    let caughtError: Error | undefined;
     try {
-      await runCleanup(createdTaskIds, 'admin', 'super_secret_password');
+      await runCleanup(registry, 'admin', 'super_secret_password');
     } catch (e: any) {
       caughtError = e;
     }
     
-    expect(caughtError).not.toBeNull();
+    expect(caughtError).toBeDefined();
     const msg = caughtError!.message;
     expect(msg).toContain('Fallback authentication failed');
     expect(msg).not.toContain('super_secret_password');
@@ -106,28 +113,27 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
 
   test('a task that remains after delete causes failure', async () => {
     mockServer.state.tasks = [
-      { id: 'dbid_test_1', title: 'Test Task 1' },
+      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading' },
     ];
     
-    // Override the mock server delete to be a no-op but return success
     const originalTasks = [...mockServer.state.tasks];
-    // A temporary sabotage to mock server state to prevent deletion
     Object.defineProperty(mockServer.state, 'tasks', {
       get: () => originalTasks,
       set: () => { /* no-op */ },
       configurable: true
     });
 
-    const createdTaskIds = new Set(['dbid_test_1']);
+    const registry = new TestResourceRegistry();
+    registry.add({ id: 'dbid_test_1', kind: 'http', uri: 'http://test', destination: '' });
     
-    let caughtError: Error | null = null;
+    let caughtError: Error | undefined;
     try {
-      await runCleanup(createdTaskIds);
+      await runCleanup(registry);
     } catch (e: any) {
       caughtError = e;
     }
     
-    expect(caughtError).not.toBeNull();
+    expect(caughtError).toBeDefined();
     expect(caughtError!.message).toContain('Leaked task IDs remaining on NAS: dbid_test_1');
     
     // Restore proper property
