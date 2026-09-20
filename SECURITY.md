@@ -45,5 +45,5 @@ This extension is designed around strict, verifiable security practices:
 - **No Global Content Scripts:** No global content script is injected into webpages. 
 
 ### Request Integrity
-- **CSRF Protection:** The extension implements `X-SYNO-TOKEN` handling for DSM 6/7 sessions that require it.
+
 - **Validation:** All NAS URLs and imported settings schemas are strictly validated before processing.

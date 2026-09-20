@@ -15,49 +15,122 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
     await mockServer.stop();
   });
 
-  test('verifies cleanup logic only deletes tracked IDs', async () => {
-    // Add dummy existing tasks to the mock server to represent user's existing data
-    mockServer.state.tasks = [
-      { id: 'dbid_1', title: 'User Data 1', status: 'downloading', size: 100, current_size: 50, speed_download: 0, speed_upload: 0 },
-      { id: 'dbid_2', title: 'User Data 2', status: 'downloading', size: 100, current_size: 50, speed_download: 0, speed_upload: 0 },
-    ];
-    
-    // Simulate what the test harness tracked
-    const createdTaskIds = new Set(['dbid_test_1', 'dbid_test_2']);
-    
-    // Add those test tasks to the server
-    mockServer.state.tasks.push(
-      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading', size: 100, current_size: 50, speed_download: 0, speed_upload: 0 },
-      { id: 'dbid_test_2', title: 'Test Task 2', status: 'downloading', size: 100, current_size: 50, speed_download: 0, speed_upload: 0 },
-    );
+  test.beforeEach(() => {
+    mockServer.state.authStatus = 'SUCCESS';
+    mockServer.state.tasks = [];
+  });
 
-    // Run the identical cleanup logic from real-nas.spec.ts
-    const username = 'admin';
-    const password = 'password';
+  // Extract the exact cleanup logic into a helper we can test
+  async function runCleanup(trackedIds: Set<string>, username = 'admin', password = 'password', fakeActiveSid?: string) {
+    let sid = fakeActiveSid;
+    if (!sid) {
+      const authUrl = `${serverUrl}/webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login&account=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&session=DownloadStation&format=sid`;
+      const authRes = await fetch(authUrl);
+      const authJson = await authRes.json();
+      
+      if (!authJson.success || !authJson.data?.sid) {
+        throw new Error('Fallback authentication failed (possibly due to 2FA).');
+      }
+      sid = authJson.data.sid;
+    }
     
-    const authUrl = `${serverUrl}/webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login&account=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&session=DownloadStation&format=sid`;
-    const authRes = await fetch(authUrl);
-    const authJson = await authRes.json();
-    const sid = authJson.data.sid;
-    
-    const taskIds = Array.from(createdTaskIds).join(',');
+    const taskIds = Array.from(trackedIds).join(',');
     const deleteUrl = `${serverUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=delete&id=${encodeURIComponent(taskIds)}&force_complete=true&_sid=${sid}`;
     const deleteRes = await fetch(deleteUrl);
     const deleteJson = await deleteRes.json();
 
-    expect(deleteJson.success).toBe(true);
+    if (!deleteJson.success) {
+      throw new Error(`API delete command failed with code ${deleteJson.error?.code}`);
+    }
+
+    const listUrl = `${serverUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=list&_sid=${sid}`;
+    const listRes = await fetch(listUrl);
+    const listJson = await listRes.json();
+
+    if (!listJson.success) {
+      throw new Error(`Failed to list tasks for cleanup verification, code: ${listJson.error?.code}`);
+    }
+
+    const remainingIds = new Set(listJson.data.tasks.map((t: any) => t.id));
+    const leakedIds = Array.from(trackedIds).filter(id => remainingIds.has(id));
+
+    if (leakedIds.length > 0) {
+      throw new Error(`Task deletion verified failed! Leaked task IDs remaining on NAS: ${leakedIds.join(', ')}`);
+    }
+    
+    trackedIds.clear();
+  }
+
+  test('verifies cleanup logic only deletes tracked IDs and handles already-absent', async () => {
+    mockServer.state.tasks = [
+      { id: 'dbid_1', title: 'User Data 1' },
+      { id: 'dbid_2', title: 'User Data 2' },
+      { id: 'dbid_test_1', title: 'Test Task 1' },
+    ];
+    
+    // Notice dbid_test_2 is already absent
+    const createdTaskIds = new Set(['dbid_test_1', 'dbid_test_2']);
+    
+    await runCleanup(createdTaskIds);
 
     // Verify the mock server state
     expect(mockServer.state.tasks.length).toBe(2);
-    expect(mockServer.state.tasks[0].id).toBe('dbid_1'); // Untouched
-    expect(mockServer.state.tasks[1].id).toBe('dbid_2'); // Untouched
+    expect(mockServer.state.tasks[0].id).toBe('dbid_1');
+    expect(mockServer.state.tasks[1].id).toBe('dbid_2');
     
-    // Verify cleanup handles already-deleted tasks safely (idempotency)
-    const duplicateDeleteRes = await fetch(deleteUrl);
-    const duplicateDeleteJson = await duplicateDeleteRes.json();
+    expect(createdTaskIds.size).toBe(0);
     
-    // In our mock, if they don't exist it just succeeds (or returns an error we handle without throwing)
-    // We expect the mock to successfully ignore or error safely
-    expect(duplicateDeleteJson.success).toBeDefined(); // Shouldn't crash
+    // Duplicate cleanup remains safe
+    await runCleanup(new Set(['dbid_test_1']));
+    expect(mockServer.state.tasks.length).toBe(2);
+  });
+  
+  test('cleanup authentication failure causes failure without leaking credentials', async () => {
+    mockServer.state.authStatus = 'INVALID_CREDENTIALS';
+    
+    const createdTaskIds = new Set(['dbid_test_1']);
+    
+    let caughtError: Error | null = null;
+    try {
+      await runCleanup(createdTaskIds, 'admin', 'super_secret_password');
+    } catch (e: any) {
+      caughtError = e;
+    }
+    
+    expect(caughtError).not.toBeNull();
+    const msg = caughtError!.message;
+    expect(msg).toContain('Fallback authentication failed');
+    expect(msg).not.toContain('super_secret_password');
+    expect(msg).not.toContain('admin');
+  });
+
+  test('a task that remains after delete causes failure', async () => {
+    mockServer.state.tasks = [
+      { id: 'dbid_test_1', title: 'Test Task 1' },
+    ];
+    
+    // Override the mock server delete to be a no-op but return success
+    const originalTasks = [...mockServer.state.tasks];
+    // A temporary sabotage to mock server state to prevent deletion
+    Object.defineProperty(mockServer.state, 'tasks', {
+      get: () => originalTasks,
+      set: () => { /* no-op */ },
+      configurable: true
+    });
+
+    const createdTaskIds = new Set(['dbid_test_1']);
+    
+    let caughtError: Error | null = null;
+    try {
+      await runCleanup(createdTaskIds);
+    } catch (e: any) {
+      caughtError = e;
+    }
+    
+    expect(caughtError).not.toBeNull();
+    expect(caughtError!.message).toContain('Leaked task IDs remaining on NAS: dbid_test_1');
+    
+    // Restore proper property
+    Object.defineProperty(mockServer.state, 'tasks', { value: originalTasks, writable: true, configurable: true });
   });
 });

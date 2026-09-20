@@ -36,7 +36,7 @@ Thumbs.db
 *.swo
 *~
 
-# AI & Agent Artifacts
+# Local development artifacts
 .gemini/
 .claude/
 .agents/
