@@ -44,7 +44,16 @@ pnpm test:e2e
 pnpm build:all
 ```
 
-**Note on E2E Tests:** Real-NAS integration tests are strictly opt-in and require local environment variables (`R22E_TEST_NAS_URL`, etc.). You are not required to provide personal NAS credentials to run the normal CI suite. The mock E2E suite (`pnpm test:e2e`) provides comprehensive offline coverage.
+**Note on E2E Tests:** Real-NAS integration tests are strictly opt-in and require local environment variables (`R22E_TEST_NAS_URL`, `R22E_TEST_USERNAME`, `R22E_TEST_PASSWORD`, `R22E_TEST_DESTINATION`). You are not required to provide personal NAS credentials to run the normal CI suite. The mock E2E suite (`pnpm test:e2e`) provides comprehensive offline coverage.
+
+### Real NAS Test Account Requirements
+If you intend to run real NAS integration tests (`pnpm test:nas:preflight` and `pnpm test:nas`), you **MUST** use a dedicated test account. Do not use your primary administrator account.
+
+Recommended account name: `r22e_test`
+- **Permissions**: Grant access to Download Station and only the specific File Station shared folder containing your `R22E_TEST_DESTINATION`.
+- **Role**: Standard user (no Administrator privileges).
+- **Security**: The automated test harness bypasses the extension's UI for teardown and cleanup using a direct Node.js HTTP client. Therefore, this dedicated test account must **NOT** have mandatory 2FA (OTP) enabled. (The extension's 2FA capabilities are validated separately).
+- **Destination**: The test destination path must be exact and exist on the NAS. Never use your main download folder for destructive testing.
 
 ## Pull Request Process
 
