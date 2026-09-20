@@ -1,0 +1,55 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profileList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profileCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: 13px;
+  padding: 8px;
+  background: var(--color-danger-subtle, #fee2e2);
+  border-radius: var(--radius-sm);
+}
+
+.success {
+  color: var(--color-success, #059669);
+  font-size: 13px;
+  padding: 8px;
+  background: var(--color-success-subtle, #d1fae5);
+  border-radius: var(--radius-sm);
+}

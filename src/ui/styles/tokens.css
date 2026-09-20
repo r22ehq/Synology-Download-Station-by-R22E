@@ -1,0 +1,159 @@
+/**
+ * Design tokens — 8px-based spacing system with light/dark theme support.
+ * Uses CSS custom properties so themes only swap values, not selectors.
+ */
+
+:root {
+  /* Spacing scale (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-family:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 18px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-index scale */
+  --z-dropdown: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+}
+
+/* Light theme (default) */
+:root,
+[data-theme='light'] {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f7f8fa;
+  --color-bg-tertiary: #f0f1f3;
+  --color-bg-hover: rgba(0, 0, 0, 0.04);
+  --color-bg-active: rgba(0, 0, 0, 0.06);
+
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  --color-text-disabled: #d1d5db;
+  --color-text-inverse: #ffffff;
+
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-subtle: rgba(37, 99, 235, 0.08);
+
+  --color-success: #16a34a;
+  --color-success-subtle: rgba(22, 163, 74, 0.08);
+  --color-warning: #d97706;
+  --color-warning-subtle: rgba(217, 119, 6, 0.08);
+  --color-error: #dc2626;
+  --color-error-subtle: rgba(220, 38, 38, 0.08);
+
+  --color-progress-bg: #e5e7eb;
+  --color-progress-fill: #2563eb;
+  --color-progress-complete: #16a34a;
+  --color-progress-error: #dc2626;
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+  --color-bg-primary: #1a1b1e;
+  --color-bg-secondary: #25262b;
+  --color-bg-tertiary: #2c2e33;
+  --color-bg-hover: rgba(255, 255, 255, 0.05);
+  --color-bg-active: rgba(255, 255, 255, 0.08);
+
+  --color-text-primary: #e4e5e7;
+  --color-text-secondary: #909296;
+  --color-text-tertiary: #5c5f66;
+  --color-text-disabled: #3b3d42;
+  --color-text-inverse: #1a1b1e;
+
+  --color-border: #2c2e33;
+  --color-border-strong: #373a40;
+
+  --color-accent: #4c8bf5;
+  --color-accent-hover: #6ba1ff;
+  --color-accent-subtle: rgba(76, 139, 245, 0.12);
+
+  --color-success: #40c057;
+  --color-success-subtle: rgba(64, 192, 87, 0.12);
+  --color-warning: #fab005;
+  --color-warning-subtle: rgba(250, 176, 5, 0.12);
+  --color-error: #fa5252;
+  --color-error-subtle: rgba(250, 82, 82, 0.12);
+
+  --color-progress-bg: #373a40;
+  --color-progress-fill: #4c8bf5;
+  --color-progress-complete: #40c057;
+  --color-progress-error: #fa5252;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* System theme preference */
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] {
+    --color-bg-primary: #1a1b1e;
+    --color-bg-secondary: #25262b;
+    --color-bg-tertiary: #2c2e33;
+    --color-bg-hover: rgba(255, 255, 255, 0.05);
+    --color-bg-active: rgba(255, 255, 255, 0.08);
+    --color-text-primary: #e4e5e7;
+    --color-text-secondary: #909296;
+    --color-text-tertiary: #5c5f66;
+    --color-text-disabled: #3b3d42;
+    --color-text-inverse: #1a1b1e;
+    --color-border: #2c2e33;
+    --color-border-strong: #373a40;
+    --color-accent: #4c8bf5;
+    --color-accent-hover: #6ba1ff;
+    --color-accent-subtle: rgba(76, 139, 245, 0.12);
+    --color-success: #40c057;
+    --color-success-subtle: rgba(64, 192, 87, 0.12);
+    --color-warning: #fab005;
+    --color-warning-subtle: rgba(250, 176, 5, 0.12);
+    --color-error: #fa5252;
+    --color-error-subtle: rgba(250, 82, 82, 0.12);
+    --color-progress-bg: #373a40;
+    --color-progress-fill: #4c8bf5;
+    --color-progress-complete: #40c057;
+    --color-progress-error: #fa5252;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
