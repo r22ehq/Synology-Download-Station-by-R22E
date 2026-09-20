@@ -146,7 +146,7 @@ export class MockNasServer {
         let title = 'mock-task';
         if (uri) {
            const match = uri.match(/dn=([^&]+)/);
-           if (match) {
+           if (match && match[1]) {
              title = decodeURIComponent(match[1]);
            } else {
              title = uri.split('/').pop() || 'mock-task';
