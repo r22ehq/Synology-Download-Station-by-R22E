@@ -1,19 +1,14 @@
 # Privacy Policy
 
-R22E Studio operates:
-- No cloud backend for this extension
-- No analytics
-- No telemetry
-- No advertising
-- No tracking service
-
-This extension **does not** collect, transmit, or store any data outside of your browser. 
+R22E Studio does not operate a backend for this extension and does not receive analytics, telemetry, browsing data, NAS credentials, tracker credentials, or download activity.
 
 ## Network Communication
 
+**Synology NAS:**
 Normal Download Station communication goes directly between the browser extension and your configured Synology NAS origins. 
 
-**Private Trackers:** When you explicitly invoke authenticated private-tracker retrieval, the extension may fetch the selected `.torrent` URL directly from that tracker origin using your browser's authenticated session (cookies) where permitted. 
+**Private Trackers:** 
+When you explicitly invoke authenticated private-tracker retrieval, the extension may fetch the selected `.torrent` URL directly from that tracker origin using your browser's authenticated session (cookies) where permitted.
 - Tracker access is entirely user-initiated.
 - Origin permission is explicitly requested.
 - Tracker credentials and cookies are **not** sent to R22E Studio.

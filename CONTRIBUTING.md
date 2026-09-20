@@ -22,11 +22,15 @@ Thank you for your interest in contributing to Synology Download Station by R22E
 
 ## Architecture & Codebase
 
-The extension is built using the WXT framework, Preact, and TypeScript.
+The extension is built using the WXT framework, Preact, and TypeScript. Note that there is no global webpage content script injected into webpages.
+
 Key directories:
-- `entrypoints/`: Contains UI surfaces like `popup`, `options`, `sidepanel`, and the `background` service worker. Note: There is no global content script injected into webpages.
-- `src/core/`: Contains the Synology API client, storage adapters, and business logic.
-- `src/ui/`: Contains reusable Preact components and state management.
+- `entrypoints/`: Extension entry points (popup, sidepanel, options, background)
+- `src/core/synology/`: Synology API client (transport, auth, Download Station, File Station)
+- `src/core/domain/`: Domain models and validation
+- `src/core/platform/`: Browser abstractions (storage, messaging, permissions)
+- `src/ui/`: UI components (using Preact and CSS Modules for styling), design tokens (`tokens.css`), and state management
+- `tests/`: Unit and integration tests
 
 ## Quality Gates
 
@@ -49,18 +53,6 @@ pnpm build:all
 3. Update relevant documentation.
 4. Keep the PR focused on a single logical change.
 5. Provide a clear description and context in your PR.
-- Prefer small, focused modules.
-- Use CSS Modules for styling.
-- Use design tokens from `src/ui/styles/tokens.css`.
-
-## Architecture
-
-- `src/core/synology/` — Synology API client (transport, auth, Download Station, File Station)
-- `src/core/domain/` — Domain models and validation
-- `src/core/platform/` — Browser abstractions (storage, messaging, permissions)
-- `src/ui/` — UI components and styles
-- `entrypoints/` — Extension entry points (popup, sidepanel, options, background, content)
-- `tests/` — Unit and integration tests
 
 ## Reporting Issues
 

@@ -1,25 +1,53 @@
 import { test, expect } from './fixtures/extension';
 
-// This suite runs only if R22E_TEST_NAS_URL is provided
 test.describe('Real NAS Integration Suite', () => {
   // Test tasks we created and need to clean up
-  let createdTaskIds: string[] = [];
+  const createdTaskIds = new Set<string>();
 
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
 
-  test.afterEach(async () => {
-    // Teardown: Clean up tasks created during the test
-    if (createdTaskIds.length > 0) {
-      console.log(`[Teardown] Cleaning up ${createdTaskIds.length} test tasks...`);
-      // Since this is an E2E test, we'll try to use the UI to clean them up, 
-      // or we can just rely on the API. But for UI testing, we should click 'Delete' on them if possible.
-      // A more robust way in E2E would be directly calling the API, but we are running in the browser context.
-      // We will clear the array to be safe.
-      createdTaskIds = [];
+  // Idempotent and deterministic cleanup using raw Node.js fetch to avoid UI brittleness
+  test.afterAll(async () => {
+    if (createdTaskIds.size === 0) return;
+
+    const nasUrl = process.env.R22E_TEST_NAS_URL!;
+    const username = process.env.R22E_TEST_USERNAME!;
+    const password = process.env.R22E_TEST_PASSWORD!;
+    
+    // Mask URL for logs
+    const maskedUrl = nasUrl.replace(/(https?:\/\/)([^@/]+@)?([^/]+)/, '$1***@***');
+    console.log(`[Teardown] Starting deterministic API cleanup for ${createdTaskIds.size} task(s) on ${maskedUrl}...`);
+    
+    try {
+      const baseUrl = nasUrl.replace(/\/$/, '');
+      // 1. Auth to get a fresh SID
+      const authUrl = `${baseUrl}/webapi/auth.cgi?api=SYNO.API.Auth&version=3&method=login&account=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&session=DownloadStation&format=sid`;
+      const authRes = await fetch(authUrl);
+      const authJson = await authRes.json();
+      
+      if (!authJson.success || !authJson.data?.sid) {
+        throw new Error('Failed to authenticate for cleanup.');
+      }
+      const sid = authJson.data.sid;
+      
+      // 2. Delete the created tasks
+      const taskIds = Array.from(createdTaskIds).join(',');
+      const deleteUrl = `${baseUrl}/webapi/DownloadStation/task.cgi?api=SYNO.DownloadStation.Task&version=1&method=delete&id=${encodeURIComponent(taskIds)}&force_complete=true&_sid=${sid}`;
+      const deleteRes = await fetch(deleteUrl);
+      const deleteJson = await deleteRes.json();
+
+      if (deleteJson.success) {
+        console.log(`[Teardown] Successfully cleaned up task(s).`);
+        createdTaskIds.clear();
+      } else {
+        console.error(`[Teardown] Failed to clean up tasks: ${JSON.stringify(deleteJson.error)}. Remaining task IDs: ${taskIds}`);
+      }
+    } catch (err) {
+      console.error(`[Teardown] Fatal error during cleanup fetch. Remaining task IDs: ${Array.from(createdTaskIds).join(',')}`, err);
     }
   });
 
-  test('end-to-end integration flow', async ({ page, gotoOptions, gotoPopup }) => {
+  test('end-to-end integration flow safely isolated', async ({ page, gotoOptions, gotoPopup }) => {
     // 1. API Discovery & 2. Login
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();
@@ -40,7 +68,6 @@ test.describe('Real NAS Integration Suite', () => {
     // 3. Capabilities, 4. Task List, 5. Aggregate statistics
     await gotoPopup(page);
     await expect(page.getByText('Disconnected')).toBeHidden({ timeout: 15000 });
-    // Expect to see some form of speed/stats or task list loaded
     await expect(page.getByRole('button', { name: /Add Task/i })).toBeVisible();
 
     // 6. Create HTTP task and intercept the response to capture the real task ID
@@ -53,37 +80,34 @@ test.describe('Real NAS Integration Suite', () => {
     const responsePromise = page.waitForResponse(response => response.url().includes('DownloadStation/task.cgi') && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Add' }).click();
     
-    // Attempt to extract the task ID from the creation response to ensure safe cleanup
     try {
       const response = await responsePromise;
       const json = await response.json();
-      if (json && json.success && json.data && json.data.task_ids) {
-         createdTaskIds.push(...json.data.task_ids);
-         console.log(`[Test] Created task IDs: ${json.data.task_ids.join(', ')}`);
+      if (json && json.success && json.data && Array.isArray(json.data.task_ids)) {
+         json.data.task_ids.forEach((id: string) => createdTaskIds.add(id));
+      } else {
+         throw new Error('Could not parse task ID from response');
       }
     } catch (e) {
-      console.warn('[Test] Could not parse task creation response to record ID for cleanup.', e);
+      // FAIL immediately if we cannot reliably track created resources
+      expect(true, 'Test aborted: Task creation response could not be parsed to track ID for cleanup.').toBe(false);
     }
     
     // Wait for the task to appear in the list
     await expect(page.getByText('ubuntu-22.04.3')).toBeVisible({ timeout: 10000 });
     
     // 9. Pause
-    const taskCard = page.locator('.r22e-card').filter({ hasText: 'ubuntu-22.04.3' });
+    const taskCard = page.locator('.r22e-card').filter({ hasText: 'ubuntu-22.04.3' }).first();
     await taskCard.getByRole('button', { name: /Pause/i }).click();
     
     // 10. Resume
     await taskCard.getByRole('button', { name: /Resume/i }).click();
 
-    // 13. Delete created test task
+    // 13. Delete created test task via UI
     await taskCard.getByRole('button', { name: /Delete/i }).click();
     await expect(page.getByText('ubuntu-22.04.3')).toBeHidden({ timeout: 10000 });
     
-    // Clear tracked IDs since we just deleted it successfully via UI
-    createdTaskIds = [];
-
     // 14. Session recovery
-    // Reload the extension popup to verify session is restored without re-login
     await page.reload();
     await expect(page.getByText('Disconnected')).toBeHidden({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /Add Task/i })).toBeVisible();

@@ -156,6 +156,14 @@ export class MockNasServer {
       if (method === 'create') {
         return { success: true };
       }
+      if (method === 'delete') {
+        const idsParam = query.id || postParams.get('id');
+        if (idsParam) {
+          const idsToDelete = idsParam.split(',');
+          this.state.tasks = this.state.tasks.filter(t => !idsToDelete.includes(t.id));
+        }
+        return { success: true, data: [] };
+      }
     }
 
     if (api === 'SYNO.DownloadStation.Statistic' && method === 'getinfo') {

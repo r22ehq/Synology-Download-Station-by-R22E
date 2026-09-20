@@ -56,7 +56,7 @@ The extension strictly requests only the permissions necessary for core features
 
 ## Privacy
 
-The extension communicates strictly between your browser and your configured Synology NAS, with no cloud backend, analytics, tracking, or telemetry. See [PRIVACY.md](PRIVACY.md).
+The extension communicates directly with your configured Synology NAS and, when explicitly requested, authenticated private trackers. There is no cloud backend, analytics, tracking, or telemetry. See [PRIVACY.md](PRIVACY.md).
 
 ## Security
 
