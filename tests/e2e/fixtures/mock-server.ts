@@ -1,6 +1,7 @@
-import http from 'http';
-import url from 'url';
-import type { TaskInfo } from './synology-types';
+import * as http from 'node:http';
+import * as crypto from 'node:crypto';
+import * as url from 'node:url';
+import type { DownloadTask } from '../../../src/core/synology/download-station/types';
 import type { ParsedUrlQuery } from 'querystring';
 
 export class MockNasServer {
@@ -8,7 +9,7 @@ export class MockNasServer {
   private port: number;
   public state: {
     authStatus: 'SUCCESS' | 'OTP_REQUIRED' | 'INVALID_CREDENTIALS' | 'SESSION_EXPIRED';
-    tasks: TaskInfo[];
+    tasks: DownloadTask[];
     statistics: Record<string, unknown>;
     requireDeviceToken: boolean;
     validDid: string | null;

@@ -43,4 +43,51 @@ describe('SynoHttpClient - SID Injection', () => {
     const requestUrl = fetchSpy.mock.calls[0]![0] as string;
     expect(requestUrl).not.toContain('_sid=');
   });
+
+  it('F. unpacks the data envelope and returns only the data on success', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
+      success: true, 
+      data: { tasks: [{ id: 'task-1' }] } 
+    })));
+    const client = new SynoHttpClient();
+    
+    const res = await client.get<{ tasks: any[] }>('http://nas', 'API/endpoint');
+    
+    expect(res).toBeDefined();
+    expect(res.tasks).toBeDefined();
+    expect(res.tasks[0].id).toBe('task-1');
+    expect((res as any).success).toBeUndefined(); // success is unwrapped
+  });
+
+  it('G. throws a SynoError on success: false with correct error code', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
+      success: false, 
+      error: { code: 403 } 
+    })));
+    const client = new SynoHttpClient();
+    
+    await expect(client.get('http://nas', 'API/endpoint')).rejects.toMatchObject({
+      code: 403,
+      message: 'Synology API Error: 403'
+    });
+  });
+
+  it('H. timeout error redacts sensitive parameters', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      const err = new Error('Abort');
+      err.name = 'AbortError';
+      return Promise.reject(err);
+    });
+    const client = new SynoHttpClient();
+    
+    await expect(client.get('http://nas', 'auth.cgi', { 
+      sid: 'TEST_SID_DO_NOT_LEAK',
+      params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
+    })).rejects.toThrowError(/_sid=\[REDACTED\]/);
+    
+    await expect(client.get('http://nas', 'auth.cgi', { 
+      sid: 'TEST_SID_DO_NOT_LEAK',
+      params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
+    })).rejects.not.toThrowError(/TEST_PASSWORD_DO_NOT_LEAK/);
+  });
 });

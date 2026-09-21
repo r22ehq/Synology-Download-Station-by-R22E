@@ -32,7 +32,7 @@
     "test:e2e:headed": "playwright test --headed",
     "prepare": "wxt prepare",
     "postinstall": "wxt prepare",
-    "test:nas": "playwright test tests/e2e/real-nas.spec.ts",
+    "test:nas": "pnpm test:nas:preflight && playwright test tests/e2e/real-nas.spec.ts",
     "test:nas:preflight": "playwright test tests/e2e/real-nas-preflight.spec.ts"
   },
   "keywords": [

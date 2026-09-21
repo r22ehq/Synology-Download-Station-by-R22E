@@ -1,5 +1,6 @@
 import type { RequestConfig } from '../types';
 import { parseSynoResponse } from './response-parser';
+import { sanitizeUrl } from './url-sanitizer';
 
 export class SynoHttpClient {
   private defaultTimeout = 30000; // 30s
@@ -81,8 +82,9 @@ export class SynoHttpClient {
 
     // Wire up parent signal if provided
     const parentSignal = options.signal;
+    const handleParentAbort = () => abortController.abort();
     if (parentSignal) {
-      parentSignal.addEventListener('abort', () => abortController.abort());
+      parentSignal.addEventListener('abort', handleParentAbort);
       if (parentSignal.aborted) abortController.abort();
     }
 
@@ -98,13 +100,14 @@ export class SynoHttpClient {
       return await parseSynoResponse<T>(response);
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout or aborted: ${url}`, { cause: error });
+        const sanitizedUrl = sanitizeUrl(url);
+        throw new Error(`Request timeout or aborted: ${sanitizedUrl}`, { cause: error });
       }
       throw error;
     } finally {
       clearTimeout(timeoutId);
       if (parentSignal) {
-        parentSignal.removeEventListener('abort', () => abortController.abort());
+        parentSignal.removeEventListener('abort', handleParentAbort);
       }
     }
   }

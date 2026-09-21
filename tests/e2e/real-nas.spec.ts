@@ -4,29 +4,28 @@ import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
 import { TestResourceRegistry } from './fixtures/test-registry';
-import type { TaskListApiResponse, EmptySuccessResponse, TaskInfo } from './fixtures/synology-types';
+import type { TaskListResponse, DownloadTask } from '../../src/core/synology/download-station/types';
 import { loadRealNasTestConfig } from './fixtures/real-nas-config';
 import type { RealNasTestConfig } from './fixtures/real-nas-config';
 
 test.describe('Real NAS Integration Suite', () => {
   const resourceRegistry = new TestResourceRegistry();
-  let preExistingIds: string[] = [];
-  let harnessSid: string;
-  
-  let httpClient: SynoHttpClient;
-  let taskEndpoint: string;
-  let taskVersion: number;
-  
   let config: RealNasTestConfig | null = null;
+  let harnessSid: string = '';
+  let taskEndpoint: string = '';
+  let taskVersion: number = 1;
+  let preExistingIds: string[] = [];
 
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
+  test.skip(process.env.R22E_TEST_ALLOW_MUTATIONS !== 'YES', 'Skipping mutating suite because R22E_TEST_ALLOW_MUTATIONS is not exactly YES.');
+
+  const httpClient = new SynoHttpClient();
 
   test.beforeAll(async () => {
     config = loadRealNasTestConfig();
     if (!config) return;
     
-    // Independent harness auth
-    httpClient = new SynoHttpClient();
+    // Harness strictly uses an independent Node client, NEVER intercepts the Product page
     const discovery = new DiscoveryClient(httpClient);
     const apiRegistry = await discovery.discoverApis(config.nasUrl);
     const auth = new AuthClient(httpClient);
@@ -39,21 +38,20 @@ test.describe('Real NAS Integration Suite', () => {
     taskVersion = apiRegistry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
 
     // Capture pre-existing
-    const listRes = await httpClient.get<TaskListApiResponse>(config.nasUrl, taskEndpoint, {
+    const listRes = await httpClient.get<TaskListResponse>(config.nasUrl, taskEndpoint, {
       params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
       sid: harnessSid
     });
-    preExistingIds = listRes.data?.tasks.map(t => t.id) || [];
+    preExistingIds = listRes.tasks?.map(t => t.id) || [];
   });
 
-  async function getTasks(): Promise<TaskInfo[]> {
+  async function getTasks(): Promise<DownloadTask[]> {
     if (!config) return [];
-    const listRes = await httpClient.get<TaskListApiResponse>(config.nasUrl, taskEndpoint, {
+    const listRes = await httpClient.get<TaskListResponse>(config.nasUrl, taskEndpoint, {
       params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list', additional: 'detail' },
       sid: harnessSid
     });
-    if (!listRes.success) throw new Error(`Failed to list tasks: ${listRes.error?.code}`);
-    return listRes.data?.tasks || [];
+    return listRes.tasks || [];
   }
 
   test.afterAll(async () => {
@@ -63,13 +61,13 @@ test.describe('Real NAS Integration Suite', () => {
     
     try {
       const taskIds = pending.map(t => t.id).join(',');
-      const deleteRes = await httpClient.get<EmptySuccessResponse>(config.nasUrl, taskEndpoint, {
-        params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'delete', id: taskIds, force_complete: 'true' },
-        sid: harnessSid
-      });
-
-      if (!deleteRes.success) {
-        throw new Error(`API delete command failed with code ${deleteRes.error?.code}`);
+      try {
+        await httpClient.get<unknown>(config.nasUrl, taskEndpoint, {
+          params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'delete', id: taskIds, force_complete: 'true' },
+          sid: harnessSid
+        });
+      } catch (err) {
+        throw new Error(`API delete command failed: ${err}`);
       }
 
       const tasks = await getTasks();

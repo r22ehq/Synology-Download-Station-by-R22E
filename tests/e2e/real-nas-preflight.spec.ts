@@ -2,7 +2,8 @@ import { test, expect } from './fixtures/extension';
 import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
-import type { FileStationListResponse, TaskListApiResponse, EmptySuccessResponse } from './fixtures/synology-types';
+import type { TaskListResponse, DownloadStationStatistic } from '../../src/core/synology/download-station/types';
+import type { FileListResponse } from '../../src/core/synology/file-station/types';
 import { loadRealNasTestConfig } from './fixtures/real-nas-config';
 
 test.describe('Real NAS Preflight Check', () => {
@@ -31,19 +32,19 @@ test.describe('Real NAS Preflight Check', () => {
     // Validate we actually have Download Station access
     const taskEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Task');
     const taskVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
-    const listRes = await httpClient.get<TaskListApiResponse>(nasUrl, taskEndpoint, {
+    const listRes = await httpClient.get<TaskListResponse>(nasUrl, taskEndpoint, {
       params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
       sid: loginResult.sid
     });
-    expect(listRes.success, 'Download Station Task list must succeed').toBe(true);
+    expect(listRes.tasks, 'Download Station Task list must return a tasks array').toBeDefined();
     
     const statEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Statistic');
     const statVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Statistic', 1);
-    const statRes = await httpClient.get<EmptySuccessResponse>(nasUrl, statEndpoint, {
+    const statRes = await httpClient.get<DownloadStationStatistic>(nasUrl, statEndpoint, {
       params: { api: 'SYNO.DownloadStation.Statistic', version: statVersion.toString(), method: 'getinfo' },
       sid: loginResult.sid
     });
-    expect(statRes.success, 'Download Station Statistic info must succeed').toBe(true);
+    expect(typeof statRes.speed_download, 'Download Station Statistic info must yield expected data').toBe('number');
 
     expect(registry.isAvailable('SYNO.FileStation.List'), 'FileStation List API must be available to test destination').toBe(true);
     const fsEndpoint = registry.resolveEndpoint('SYNO.FileStation.List');
@@ -51,7 +52,7 @@ test.describe('Real NAS Preflight Check', () => {
     
     // Ensure the folder exactly exists
     const destPath = destination;
-    const fsListFolderRes = await httpClient.get<FileStationListResponse>(nasUrl, fsEndpoint, { 
+    const fsListFolderRes = await httpClient.get<FileListResponse>(nasUrl, fsEndpoint, { 
       params: {
         api: 'SYNO.FileStation.List',
         version: fsVersion.toString(),
@@ -61,7 +62,7 @@ test.describe('Real NAS Preflight Check', () => {
       sid: loginResult.sid 
     });
     
-    expect(fsListFolderRes.success, `Destination "${destPath}" must exist and be accessible`).toBe(true);
+    expect(fsListFolderRes.files, `Destination "${destPath}" must return its contents list`).toBeDefined();
     
     console.log(`[Preflight] NAS connection verified. Dedicated test destination is accessible.`);
   });
