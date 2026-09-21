@@ -12,10 +12,12 @@ describe('url-sanitizer', () => {
     expect(result).not.toContain('TEST_DEVICE_ID_DO_NOT_LEAK');
     expect(result).not.toContain('TEST_DEVICE_TOKEN_DO_NOT_LEAK');
 
-    expect(result).toContain('passwd=[REDACTED]');
-    expect(result).toContain('_sid=[REDACTED]');
-    expect(result).toContain('otp_code=[REDACTED]');
-    expect(result).toContain('device_token=[REDACTED]');
+    const parsed = new URL(result);
+    expect(parsed.searchParams.get('passwd')).toBe('[REDACTED]');
+    expect(parsed.searchParams.get('_sid')).toBe('[REDACTED]');
+    expect(parsed.searchParams.get('otp_code')).toBe('[REDACTED]');
+    expect(parsed.searchParams.get('device_id')).toBe('[REDACTED]');
+    expect(parsed.searchParams.get('device_token')).toBe('[REDACTED]');
   });
 
   it('handles invalid URLs safely', () => {

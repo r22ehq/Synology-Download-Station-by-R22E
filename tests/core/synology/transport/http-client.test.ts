@@ -80,14 +80,17 @@ describe('SynoHttpClient - SID Injection', () => {
     });
     const client = new SynoHttpClient();
     
-    await expect(client.get('http://nas', 'auth.cgi', { 
-      sid: 'TEST_SID_DO_NOT_LEAK',
-      params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
-    })).rejects.toThrowError(/_sid=\[REDACTED\]/);
-    
-    await expect(client.get('http://nas', 'auth.cgi', { 
-      sid: 'TEST_SID_DO_NOT_LEAK',
-      params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
-    })).rejects.not.toThrowError(/TEST_PASSWORD_DO_NOT_LEAK/);
+    try {
+      await client.get('http://nas', 'auth.cgi', { 
+        sid: 'TEST_SID_DO_NOT_LEAK',
+        params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
+      });
+      expect.fail('Should have thrown');
+    } catch (err: any) {
+      const msg = err.message;
+      expect(msg).toContain('[REDACTED]');
+      expect(msg).not.toContain('TEST_SID_DO_NOT_LEAK');
+      expect(msg).not.toContain('TEST_PASSWORD_DO_NOT_LEAK');
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/extension';
 import crypto from 'crypto';
 import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
+import type { ApiRegistry } from '../../src/core/synology/api-discovery/api-registry';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
 import { TestResourceRegistry } from './fixtures/test-registry';
@@ -13,7 +14,7 @@ test.describe('Real NAS Integration Suite', () => {
   const resourceRegistry = new TestResourceRegistry();
   let config: RealNasTestConfig | null = null;
   let harnessSid: string = '';
-  let apiRegistry: any; // We'll store it properly
+  let apiRegistry: ApiRegistry;
   let preExistingIds: string[] = [];
 
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');

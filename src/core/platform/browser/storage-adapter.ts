@@ -19,8 +19,12 @@ export async function restrictStorageToTrustedContexts(): Promise<void> {
           try {
             // WebExtensions / Firefox signature fallback
             await local.setAccessLevel('TRUSTED_CONTEXTS');
-          } catch (e) {
-            console.warn('[R22E] Failed to restrict local storage access level', e);
+          } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'name' in e && e.name === 'MockNotImplementedError') {
+              // Ignore in test environments
+            } else {
+              console.warn('[R22E] Failed to restrict local storage access level', e);
+            }
           }
         }
       }
@@ -35,8 +39,12 @@ export async function restrictStorageToTrustedContexts(): Promise<void> {
         } catch {
           try {
             await session.setAccessLevel('TRUSTED_CONTEXTS');
-          } catch (e) {
-            console.warn('[R22E] Failed to restrict session storage access level', e);
+          } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'name' in e && e.name === 'MockNotImplementedError') {
+              // Ignore in test environments
+            } else {
+              console.warn('[R22E] Failed to restrict session storage access level', e);
+            }
           }
         }
       }
