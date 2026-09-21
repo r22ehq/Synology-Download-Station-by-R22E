@@ -13,7 +13,7 @@ export default defineConfig({
       description: '__MSG_extensionDescription__',
       default_locale: 'en',
       permissions: ['storage', 'contextMenus', 'alarms'],
-      host_permissions: isE2E ? ['http://127.0.0.1/*'] : undefined,
+      host_permissions: isE2E ? ['*://*/*'] : undefined,
       optional_permissions: [
         'notifications',
         'downloads',

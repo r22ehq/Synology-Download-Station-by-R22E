@@ -142,6 +142,7 @@ export class TaskClient {
 
     const params = buildSynoParams(this.apiName, version, 'pause', {
       id: encodeTaskIds(ids),
+      _sid: sid,
     });
 
     const body = buildUrlEncodedBody(params);
@@ -163,6 +164,7 @@ export class TaskClient {
 
     const params = buildSynoParams(this.apiName, version, 'resume', {
       id: encodeTaskIds(ids),
+      _sid: sid,
     });
 
     const body = buildUrlEncodedBody(params);
@@ -185,6 +187,7 @@ export class TaskClient {
 
     const extraParams: Record<string, string | boolean> = {
       id: encodeTaskIds(ids),
+      _sid: sid,
     };
     if (forceComplete !== undefined) {
       extraParams.force_complete = forceComplete;

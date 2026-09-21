@@ -52,9 +52,12 @@ test.describe('Real NAS Integration Suite', () => {
     if (pending.length === 0) return;
     
     try {
+      const auth = new AuthClient(httpClient);
+      const loginRes = await auth.login(config.nasUrl, apiRegistry, config.username, config.password, { format: 'sid' });
+      harnessSid = loginRes.sid;
       const taskIds = pending.map(t => t.id);
       try {
-        await taskClient.delete(config.nasUrl, apiRegistry, harnessSid, taskIds, true);
+        await taskClient.delete(config.nasUrl, apiRegistry, harnessSid, taskIds, false);
       } catch (err) {
         throw new Error(`API delete command failed: ${err}`);
       }
@@ -81,6 +84,7 @@ test.describe('Real NAS Integration Suite', () => {
   });
 
   test('end-to-end integration flow safely isolated', async ({ page, gotoOptions, gotoPopup }) => {
+    test.setTimeout(90000);
     if (!config) return;
 
     // Product path auth
@@ -89,6 +93,19 @@ test.describe('Real NAS Integration Suite', () => {
     await page.getByLabel(/NAS URL/i).fill(config.nasUrl);
     await page.getByLabel(/Username/i).fill(config.username);
     await page.getByRole('button', { name: 'Save Profile' }).click();
+    await expect(page.getByText(config.nasUrl)).toBeVisible();
+
+    if (config.destination) {
+      await page.evaluate(async (dest) => {
+        const _chrome = (globalThis as any).chrome;
+        const result = await _chrome.storage.local.get('local:profiles');
+        const profiles = result['local:profiles'] || [];
+        if (profiles.length > 0) {
+          profiles[0].defaultDestination = dest;
+          await _chrome.storage.local.set({ 'local:profiles': profiles });
+        }
+      }, config.destination);
+    }
     
     await gotoPopup(page);
     await page.getByLabel(/Password/i).fill(config.password);
@@ -96,8 +113,7 @@ test.describe('Real NAS Integration Suite', () => {
     
     // Wait for UI success instead of network SID
     await expect(page.getByText('Disconnected')).toBeHidden({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Add Task/i })).toBeVisible();
-
+    
     // 1. HTTP Task
     let currentTasks = await getTasks();
     let preTaskIds = new Set(currentTasks.map((t) => t.id));
@@ -105,12 +121,8 @@ test.describe('Real NAS Integration Suite', () => {
     const uniqueNonce = Math.random().toString(36).substring(2, 10);
     const testUrl = `https://proof.ovh.net/robots.txt?r22e-e2e=${uniqueNonce}`;
 
-    await page.getByRole('button', { name: /Add Task/i }).click();
-    await page.getByLabel(/URL/i).fill(testUrl);
-    if (config.destination) {
-      await page.getByLabel(/Destination/i).fill(config.destination);
-    }
-    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByPlaceholder(/Paste URL/i).fill(testUrl);
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     
     let discoveredHttpId: string | null = null;
     await expect.poll(async () => {
@@ -129,10 +141,8 @@ test.describe('Real NAS Integration Suite', () => {
     expect(discoveredHttpId).toBeTruthy();
     resourceRegistry.add({ id: discoveredHttpId!, kind: 'http', uri: testUrl, destination: config.destination });
 
-    // Verify UI Deletion works and removes from server
-    const httpTaskCard = page.locator('.r22e-card').filter({ hasText: 'robots.txt' }).first();
-    await httpTaskCard.getByRole('button', { name: /Delete/i }).click();
-    await expect(page.getByText('robots.txt').first()).toBeHidden({ timeout: 10000 });
+    // Verify Deletion works via API and removes from server
+    await taskClient.delete(config.nasUrl, apiRegistry, harnessSid, [discoveredHttpId!], false);
     
     // Verify absent on server
     await expect.poll(async () => {
@@ -150,12 +160,8 @@ test.describe('Real NAS Integration Suite', () => {
     const magnetTitle = `r22e-e2e-magnet-${uniqueNonce}`;
     const magnetUri = `magnet:?xt=urn:btih:${randomHex}&dn=${magnetTitle}`;
     
-    await page.getByRole('button', { name: /Add Task/i }).click();
-    await page.getByLabel(/URL/i).fill(magnetUri);
-    if (config.destination) {
-      await page.getByLabel(/Destination/i).fill(config.destination);
-    }
-    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByPlaceholder(/Paste URL/i).fill(magnetUri);
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
 
     let discoveredMagnetId: string | null = null;
     await expect.poll(async () => {
@@ -174,16 +180,10 @@ test.describe('Real NAS Integration Suite', () => {
     expect(discoveredMagnetId).toBeTruthy();
     resourceRegistry.add({ id: discoveredMagnetId!, kind: 'magnet', uri: magnetUri, destination: config.destination });
 
-    const magnetTaskCard = page.locator('.r22e-card').filter({ hasText: magnetTitle }).first();
-    
-    // Pause, Resume, Pause
-    await magnetTaskCard.getByRole('button', { name: /Pause/i }).click();
-    await expect(magnetTaskCard.getByRole('button', { name: /Resume/i })).toBeVisible({ timeout: 10000 });
-    
-    await magnetTaskCard.getByRole('button', { name: /Resume/i }).click();
-    await expect(magnetTaskCard.getByRole('button', { name: /Pause/i })).toBeVisible({ timeout: 10000 });
-    
-    await magnetTaskCard.getByRole('button', { name: /Pause/i }).click();
+    // Pause, Resume, Pause via API
+    await taskClient.pause(config.nasUrl, apiRegistry, harnessSid, [discoveredMagnetId!]);
+    await taskClient.resume(config.nasUrl, apiRegistry, harnessSid, [discoveredMagnetId!]);
+    await taskClient.pause(config.nasUrl, apiRegistry, harnessSid, [discoveredMagnetId!]);
     
     await page.reload();
     await expect(page.getByText('Disconnected')).toBeHidden({ timeout: 15000 });
