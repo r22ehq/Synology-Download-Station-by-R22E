@@ -4,7 +4,8 @@ import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
 import { TestResourceRegistry } from './fixtures/test-registry';
-import type { TaskListResponse, DownloadTask } from '../../src/core/synology/download-station/types';
+import { TaskClient } from '../../src/core/synology/download-station/task-client';
+import type { DownloadTask } from '../../src/core/synology/download-station/types';
 import { loadRealNasTestConfig } from './fixtures/real-nas-config';
 import type { RealNasTestConfig } from './fixtures/real-nas-config';
 
@@ -12,14 +13,14 @@ test.describe('Real NAS Integration Suite', () => {
   const resourceRegistry = new TestResourceRegistry();
   let config: RealNasTestConfig | null = null;
   let harnessSid: string = '';
-  let taskEndpoint: string = '';
-  let taskVersion: number = 1;
+  let apiRegistry: any; // We'll store it properly
   let preExistingIds: string[] = [];
 
   test.skip(!process.env.R22E_TEST_NAS_URL, 'Skipping Real NAS tests because R22E_TEST_NAS_URL is not set.');
   test.skip(process.env.R22E_TEST_ALLOW_MUTATIONS !== 'YES', 'Skipping mutating suite because R22E_TEST_ALLOW_MUTATIONS is not exactly YES.');
 
   const httpClient = new SynoHttpClient();
+  const taskClient = new TaskClient(httpClient);
 
   test.beforeAll(async () => {
     config = loadRealNasTestConfig();
@@ -27,30 +28,20 @@ test.describe('Real NAS Integration Suite', () => {
     
     // Harness strictly uses an independent Node client, NEVER intercepts the Product page
     const discovery = new DiscoveryClient(httpClient);
-    const apiRegistry = await discovery.discoverApis(config.nasUrl);
+    apiRegistry = await discovery.discoverApis(config.nasUrl);
     const auth = new AuthClient(httpClient);
     const loginResult = await auth.login(config.nasUrl, apiRegistry, config.username, config.password, { format: 'sid' });
     if (!loginResult.sid) throw new Error('Harness failed to authenticate');
     harnessSid = loginResult.sid;
 
-    // Resolve endpoints once
-    taskEndpoint = apiRegistry.resolveEndpoint('SYNO.DownloadStation.Task');
-    taskVersion = apiRegistry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
-
     // Capture pre-existing
-    const listRes = await httpClient.get<TaskListResponse>(config.nasUrl, taskEndpoint, {
-      params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
-      sid: harnessSid
-    });
+    const listRes = await taskClient.list(config.nasUrl, apiRegistry, harnessSid);
     preExistingIds = listRes.tasks?.map(t => t.id) || [];
   });
 
   async function getTasks(): Promise<DownloadTask[]> {
     if (!config) return [];
-    const listRes = await httpClient.get<TaskListResponse>(config.nasUrl, taskEndpoint, {
-      params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list', additional: 'detail' },
-      sid: harnessSid
-    });
+    const listRes = await taskClient.list(config.nasUrl, apiRegistry, harnessSid, { additional: ['detail'] });
     return listRes.tasks || [];
   }
 
@@ -60,12 +51,9 @@ test.describe('Real NAS Integration Suite', () => {
     if (pending.length === 0) return;
     
     try {
-      const taskIds = pending.map(t => t.id).join(',');
+      const taskIds = pending.map(t => t.id);
       try {
-        await httpClient.get<unknown>(config.nasUrl, taskEndpoint, {
-          params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'delete', id: taskIds, force_complete: 'true' },
-          sid: harnessSid
-        });
+        await taskClient.delete(config.nasUrl, apiRegistry, harnessSid, taskIds, true);
       } catch (err) {
         throw new Error(`API delete command failed: ${err}`);
       }

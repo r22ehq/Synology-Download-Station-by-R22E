@@ -2,8 +2,9 @@ import { test, expect } from './fixtures/extension';
 import { SynoHttpClient } from '../../src/core/synology/transport/http-client';
 import { DiscoveryClient } from '../../src/core/synology/api-discovery/discovery-client';
 import { AuthClient } from '../../src/core/synology/auth/auth-client';
-import type { TaskListResponse, DownloadStationStatistic } from '../../src/core/synology/download-station/types';
-import type { FileListResponse } from '../../src/core/synology/file-station/types';
+import { TaskClient } from '../../src/core/synology/download-station/task-client';
+import { StatisticClient } from '../../src/core/synology/download-station/statistic-client';
+import { FileStationClient } from '../../src/core/synology/file-station/file-station-client';
 import { loadRealNasTestConfig } from './fixtures/real-nas-config';
 
 test.describe('Real NAS Preflight Check', () => {
@@ -18,6 +19,9 @@ test.describe('Real NAS Preflight Check', () => {
 
     const httpClient = new SynoHttpClient();
     const discoveryClient = new DiscoveryClient(httpClient);
+    const taskClient = new TaskClient(httpClient);
+    const statClient = new StatisticClient(httpClient);
+    const fsClient = new FileStationClient(httpClient);
 
     const registry = await discoveryClient.discoverApis(nasUrl);
     expect(registry, 'API discovery must succeed').toBeDefined();
@@ -30,37 +34,17 @@ test.describe('Real NAS Preflight Check', () => {
     expect(loginResult.sid, 'Login must yield a valid SID (2FA is unsupported for automated destructive test accounts)').toBeDefined();
     
     // Validate we actually have Download Station access
-    const taskEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Task');
-    const taskVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Task', 1);
-    const listRes = await httpClient.get<TaskListResponse>(nasUrl, taskEndpoint, {
-      params: { api: 'SYNO.DownloadStation.Task', version: taskVersion.toString(), method: 'list' },
-      sid: loginResult.sid
-    });
+    const listRes = await taskClient.list(nasUrl, registry, loginResult.sid);
     expect(listRes.tasks, 'Download Station Task list must return a tasks array').toBeDefined();
     
-    const statEndpoint = registry.resolveEndpoint('SYNO.DownloadStation.Statistic');
-    const statVersion = registry.getNegotiatedVersion('SYNO.DownloadStation.Statistic', 1);
-    const statRes = await httpClient.get<DownloadStationStatistic>(nasUrl, statEndpoint, {
-      params: { api: 'SYNO.DownloadStation.Statistic', version: statVersion.toString(), method: 'getinfo' },
-      sid: loginResult.sid
-    });
+    const statRes = await statClient.getInfo(nasUrl, registry, loginResult.sid);
     expect(typeof statRes.speed_download, 'Download Station Statistic info must yield expected data').toBe('number');
 
     expect(registry.isAvailable('SYNO.FileStation.List'), 'FileStation List API must be available to test destination').toBe(true);
-    const fsEndpoint = registry.resolveEndpoint('SYNO.FileStation.List');
-    const fsVersion = registry.getNegotiatedVersion('SYNO.FileStation.List', 1);
     
     // Ensure the folder exactly exists
     const destPath = destination;
-    const fsListFolderRes = await httpClient.get<FileListResponse>(nasUrl, fsEndpoint, { 
-      params: {
-        api: 'SYNO.FileStation.List',
-        version: fsVersion.toString(),
-        method: 'list',
-        folder_path: destPath
-      }, 
-      sid: loginResult.sid 
-    });
+    const fsListFolderRes = await fsClient.listFolder(nasUrl, registry, loginResult.sid, destPath);
     
     expect(fsListFolderRes.files, `Destination "${destPath}" must return its contents list`).toBeDefined();
     
