@@ -25,7 +25,6 @@ describe('TaskClient (Upload)', () => {
     
     expect(postSpy).toHaveBeenCalled();
     const config = postSpy.mock.calls[0]?.[2] as any;
-    console.log('Mock calls:', postSpy.mock.calls);
     expect(config).toBeInstanceOf(FormData);
     expect(config.get('file').name).toBe('ubuntu.torrent');
     expect(config.get('destination')).toBe('/downloads');

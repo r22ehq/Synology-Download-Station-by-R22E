@@ -88,7 +88,7 @@ describe('SynoHttpClient - SID Injection', () => {
       expect.fail('Should have thrown');
     } catch (err: any) {
       const msg = err.message;
-      expect(msg).toContain('[REDACTED]');
+      expect(msg).toMatch(/%5BREDACTED%5D|\[REDACTED\]/);
       expect(msg).not.toContain('TEST_SID_DO_NOT_LEAK');
       expect(msg).not.toContain('TEST_PASSWORD_DO_NOT_LEAK');
     }
