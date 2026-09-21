@@ -1,5 +1,4 @@
 import * as http from 'node:http';
-import * as crypto from 'node:crypto';
 import * as url from 'node:url';
 import type { DownloadTask } from '../../../src/core/synology/download-station/types';
 import type { ParsedUrlQuery } from 'querystring';
@@ -158,7 +157,19 @@ export class MockNasServer {
           id: newId,
           title: title,
           status: 'downloading',
-          additional: { detail: { uri, destination } }
+          type: uri?.startsWith('magnet') ? 'bt' : 'http',
+          username: 'admin',
+          size: 1024,
+          additional: { 
+            detail: { 
+              uri: uri || '', 
+              destination: destination || '', 
+              create_time: Math.floor(Date.now() / 1000), 
+              started_time: Math.floor(Date.now() / 1000), 
+              completed_time: 0, 
+              priority: 'auto' 
+            } 
+          }
         });
         
         return { success: true };

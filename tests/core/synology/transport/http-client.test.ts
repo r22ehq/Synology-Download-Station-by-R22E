@@ -45,7 +45,7 @@ describe('SynoHttpClient - SID Injection', () => {
   });
 
   it('F. unpacks the data envelope and returns only the data on success', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
       success: true, 
       data: { tasks: [{ id: 'task-1' }] } 
     })));
@@ -60,7 +60,7 @@ describe('SynoHttpClient - SID Injection', () => {
   });
 
   it('G. throws a SynoError on success: false with correct error code', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ 
       success: false, 
       error: { code: 403 } 
     })));
@@ -73,7 +73,7 @@ describe('SynoHttpClient - SID Injection', () => {
   });
 
   it('H. timeout error redacts sensitive parameters', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
       const err = new Error('Abort');
       err.name = 'AbortError';
       return Promise.reject(err);

@@ -66,9 +66,9 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
 
   test('verifies cleanup logic only deletes tracked IDs and handles already-absent', async () => {
     mockServer.state.tasks = [
-      { id: 'dbid_1', title: 'User Data 1', status: 'downloading' },
-      { id: 'dbid_2', title: 'User Data 2', status: 'downloading' },
-      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading' },
+      { id: 'dbid_1', title: 'User Data 1', status: 'downloading', type: 'http', username: 'admin', size: 1000 },
+      { id: 'dbid_2', title: 'User Data 2', status: 'downloading', type: 'http', username: 'admin', size: 1000 },
+      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading', type: 'http', username: 'admin', size: 1000 },
     ];
     
     const registry = new TestResourceRegistry();
@@ -113,7 +113,7 @@ test.describe('Real NAS Cleanup Harness Verification', () => {
 
   test('a task that remains after delete causes failure', async () => {
     mockServer.state.tasks = [
-      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading' },
+      { id: 'dbid_test_1', title: 'Test Task 1', status: 'downloading', type: 'http', username: 'admin', size: 1000 },
     ];
     
     const originalTasks = [...mockServer.state.tasks];

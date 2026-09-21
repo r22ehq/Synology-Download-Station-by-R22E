@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/extension';
 test.describe('Authentication flows', () => {
   test('handles successful login and task loading', async ({ page, gotoOptions, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
-    mockNas.state.tasks = [{ id: 'task1', title: 'Test Download', status: 'downloading', size: 1000, downloaded: 500 }];
+    mockNas.state.tasks = [{ id: 'task1', title: 'Test Download', status: 'downloading', size: 1000, type: 'http', username: 'admin', additional: { transfer: { size_downloaded: 500, size_uploaded: 0, speed_download: 0, speed_upload: 0 } } }];
 
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();
@@ -22,7 +22,7 @@ test.describe('Authentication flows', () => {
 
   test('displays OTP UI when required and handles correct OTP', async ({ page, gotoOptions, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'OTP_REQUIRED';
-    mockNas.state.tasks = [{ id: 'task2', title: 'OTP Task', status: 'downloading', size: 500, downloaded: 100 }];
+    mockNas.state.tasks = [{ id: 'task2', title: 'OTP Task', status: 'downloading', size: 500, type: 'http', username: 'admin', additional: { transfer: { size_downloaded: 100, size_uploaded: 0, speed_download: 0, speed_upload: 0 } } }];
 
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();

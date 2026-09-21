@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/extension';
 test.describe('Refresh Coordinator Runtime Test', () => {
   test('Popup and Side Panel trigger exactly ONE NAS request together', async ({ page, context, gotoOptions, gotoPopup, gotoSidePanel, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
-    mockNas.state.tasks = [{ id: 'task1', title: 'Coordinator Task', status: 'downloading', size: 100, downloaded: 50 }];
+    mockNas.state.tasks = [{ id: 'task1', title: 'Coordinator Task', status: 'downloading', type: 'http', username: 'admin', size: 100, additional: { transfer: { size_downloaded: 50, size_uploaded: 0, speed_download: 0, speed_upload: 0 } } }];
 
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();

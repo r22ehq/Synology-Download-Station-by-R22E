@@ -3,7 +3,7 @@ import { test, expect } from './fixtures/extension';
 test.describe('Side Panel', () => {
   test.beforeEach(async ({ page, gotoOptions, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
-    mockNas.state.tasks = [{ id: 'task1', title: 'SidePanel Task', status: 'downloading', size: 100, downloaded: 50 }];
+    mockNas.state.tasks = [{ id: 'task1', title: 'SidePanel Task', status: 'downloading', size: 100, type: 'http', username: 'admin', additional: { transfer: { size_downloaded: 50, size_uploaded: 0, speed_download: 0, speed_upload: 0 } } }];
 
     await gotoOptions(page);
     await page.getByRole('button', { name: 'Add NAS Connection' }).click();
