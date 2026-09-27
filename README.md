@@ -6,7 +6,7 @@
 
 [Product page](https://r22e.com/plugins/synology-download-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
-> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/synology-download-station) will link to the official listing as soon as it is live. Until then, release packages will be available on GitHub after the first tagged release.
+> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/synology-download-station) will link to the official listing as soon as it is live. Until then, use the versioned packages on [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases).
 
 ## What it does
 
@@ -42,7 +42,7 @@ The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progr
 | Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
 | Safari | Planned | — |
 
-The links above point to the releases page; no public package is available until the first release is tagged. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
+The links above point to browser-specific packages on the releases page. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
 
 ## Getting connected
 
