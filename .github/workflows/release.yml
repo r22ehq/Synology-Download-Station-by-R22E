@@ -51,6 +51,7 @@ jobs:
         with:
           name: chrome-store-package
           path: .output/*-chrome.zip
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 

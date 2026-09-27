@@ -81,6 +81,7 @@ jobs:
         with:
           name: ${{ matrix.browser }}-package-${{ github.sha }}
           path: .output/*-${{ matrix.browser }}.zip
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
@@ -89,6 +90,7 @@ jobs:
         with:
           name: ${{ matrix.browser }}-build
           path: .output/${{ matrix.browser == 'chrome' && 'chrome-mv3' || matrix.browser == 'firefox' && 'firefox-mv3' || matrix.browser == 'edge' && 'edge-mv3' || 'opera-mv3' }}/
+          include-hidden-files: true
           retention-days: 7
 
   e2e:
