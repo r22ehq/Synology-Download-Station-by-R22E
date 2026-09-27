@@ -4,9 +4,9 @@
 
 ![R22E Station demo: downloading, completed, and paused tasks](docs/media/r22e-station-demo.gif)
 
-[Product page](https://r22e.com/plugins/synology-download-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
+[Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
-> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/synology-download-station) will link to the official listing as soon as it is live. Until then, use the versioned packages on [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases).
+> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/r22e-station) will link to the official listing as soon as it is live. Until then, use the versioned packages on [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases).
 
 ## What it does
 

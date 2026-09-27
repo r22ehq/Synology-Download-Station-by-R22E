@@ -22,7 +22,7 @@ This sheet describes the Chrome build in `.output/synology-download-station-by-r
 | Global screenshots | The shown dashboard marks this field required too. Upload `docs/media/appearance-dark-1280x800.jpg` (or a Tasks image) |
 | Promo video, small promo tile, marquee promo tile | Leave blank unless the dashboard explicitly marks them required |
 | Official URL | Select `r22e.com` if it is verified in your Chrome Web Store publisher account; the site is live and belongs to the publisher |
-| Homepage URL | `https://r22e.com/plugins/synology-download-station` — the working product page is a better user-facing homepage than the code repository |
+| Homepage URL | `https://r22e.com/plugins/r22e-station` — the working product page is a better user-facing homepage than the code repository |
 | Support URL | `https://r22e.com/contact` — the working contact page links to the confirmed support email; GitHub Issues remains an alternative for bug reports |
 | Mature content | Off |
 
