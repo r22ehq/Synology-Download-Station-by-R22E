@@ -36,13 +36,24 @@ export class MockNasServer {
         res.end();
         return;
       }
-      
-      const parsedUrl = url.parse(req.url || '', true);
-      const pathname = parsedUrl.pathname || '';
-      this.requestCounts[pathname] = (this.requestCounts[pathname] || 0) + 1;
-      
+
+      const parsedUrl = url.parse(req.url || '', true) as url.UrlWithParsedQuery & {
+        searchParams: URLSearchParams;
+      };
+      parsedUrl.searchParams = new URLSearchParams(parsedUrl.search || '');
+      const api = parsedUrl.searchParams.get('api') || '';
+      const method = parsedUrl.searchParams.get('method') || '';
+
+      console.log(`[MockNas] Request: ${api} ${method} (authStatus: ${this.state.authStatus})`);
+
+      if (api) {
+        this.requestCounts[api] = (this.requestCounts[api] || 0) + 1;
+      }
+
       let body = '';
-      req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+      req.on('data', (chunk: Buffer) => {
+        body += chunk.toString();
+      });
       req.on('end', () => {
         const query = parsedUrl.query;
         const params = new URLSearchParams(body || '');
@@ -52,7 +63,15 @@ export class MockNasServer {
         res.setHeader('Content-Type', 'application/json');
 
         try {
-          const responsePayload = this.handleRequest(api as string, method as string, query, params);
+          const responsePayload = this.handleRequest(
+            api as string,
+            method as string,
+            query,
+            params,
+          );
+          console.log(
+            `[MockNas] Request: ${api} ${method} -> ${JSON.stringify(responsePayload).slice(0, 100)}`,
+          );
           res.writeHead(200);
           res.end(JSON.stringify(responsePayload));
         } catch (error) {
@@ -66,12 +85,12 @@ export class MockNasServer {
 
   public async start(): Promise<void> {
     return new Promise((resolve) => {
-      this.server.listen(this.port, '127.0.0.1', () => { 
+      this.server.listen(this.port, '127.0.0.1', () => {
         const address = this.server.address();
         if (address && typeof address === 'object') {
-            this.port = address.port;
+          this.port = address.port;
         }
-        resolve(); 
+        resolve();
       });
     });
   }
@@ -97,29 +116,51 @@ export class MockNasServer {
     this.requestCounts = {};
   }
 
-  private handleRequest(api: string, method: string, query: ParsedUrlQuery, postParams: URLSearchParams) {
+  private handleRequest(
+    api: string,
+    method: string,
+    query: ParsedUrlQuery,
+    postParams: URLSearchParams,
+  ) {
     if (api === 'SYNO.API.Info' && method === 'query') {
       return {
         success: true,
         data: {
           'SYNO.API.Auth': { maxVersion: 7, minVersion: 1, path: 'auth.cgi' },
-          'SYNO.DownloadStation.Task': { maxVersion: 3, minVersion: 1, path: 'DownloadStation/task.cgi' },
-          'SYNO.DownloadStation.Info': { maxVersion: 2, minVersion: 1, path: 'DownloadStation/info.cgi' },
-          'SYNO.DownloadStation.Statistic': { maxVersion: 1, minVersion: 1, path: 'DownloadStation/statistic.cgi' },
-          'SYNO.FileStation.List': { maxVersion: 2, minVersion: 1, path: 'FileStation/file_share.cgi' }
-        }
+          'SYNO.DownloadStation.Task': {
+            maxVersion: 3,
+            minVersion: 1,
+            path: 'DownloadStation/task.cgi',
+          },
+          'SYNO.DownloadStation.Info': {
+            maxVersion: 2,
+            minVersion: 1,
+            path: 'DownloadStation/info.cgi',
+          },
+          'SYNO.DownloadStation.Statistic': {
+            maxVersion: 1,
+            minVersion: 1,
+            path: 'DownloadStation/statistic.cgi',
+          },
+          'SYNO.FileStation.List': {
+            maxVersion: 2,
+            minVersion: 1,
+            path: 'FileStation/file_share.cgi',
+          },
+        },
       };
     }
 
     if (api === 'SYNO.API.Auth' && method === 'login') {
       const otpCode = query.otp_code || postParams.get('otp_code');
       const did = query.device_id || postParams.get('device_id');
-      
-      if (this.state.authStatus === 'INVALID_CREDENTIALS') return { success: false, error: { code: 400 } };
+
+      if (this.state.authStatus === 'INVALID_CREDENTIALS')
+        return { success: false, error: { code: 400 } };
       if (this.state.authStatus === 'OTP_REQUIRED') {
         if (!otpCode) {
           if (this.state.validDid && did === this.state.validDid) {
-             return { success: true, data: { sid: 'mock-sid-123', did: this.state.validDid } };
+            return { success: true, data: { sid: 'mock-sid-123', did: this.state.validDid } };
           }
           return { success: false, error: { code: 403 } };
         }
@@ -131,7 +172,12 @@ export class MockNasServer {
 
     if (api === 'SYNO.API.Auth' && method === 'logout') return { success: true };
 
-    if (this.state.authStatus === 'SESSION_EXPIRED') return { success: false, error: { code: 119 } };
+    if (this.state.authStatus === 'SESSION_EXPIRED')
+      return { success: false, error: { code: 119 } };
+
+    if (api === 'SYNO.DownloadStation.Info' && method === 'getinfo') {
+      return { success: true, data: { is_manager: true, version: 2 } };
+    }
 
     if (api === 'SYNO.DownloadStation.Task') {
       if (method === 'list') {
@@ -141,18 +187,18 @@ export class MockNasServer {
         const uri = (query.uri as string) || postParams.get('uri') || '';
         const destination = (query.destination as string) || postParams.get('destination') || '';
         const newId = `dbid_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        
+
         // Derive title from URI (naive logic for mock)
         let title = 'mock-task';
         if (uri) {
-           const match = uri.match(/dn=([^&]+)/);
-           if (match && match[1]) {
-             title = decodeURIComponent(match[1]);
-           } else {
-             title = uri.split('/').pop() || 'mock-task';
-           }
+          const match = uri.match(/dn=([^&]+)/);
+          if (match && match[1]) {
+            title = decodeURIComponent(match[1]);
+          } else {
+            title = uri.split('/').pop() || 'mock-task';
+          }
         }
-        
+
         this.state.tasks.push({
           id: newId,
           title: title,
@@ -160,25 +206,25 @@ export class MockNasServer {
           type: uri?.startsWith('magnet') ? 'bt' : 'http',
           username: 'admin',
           size: 1024,
-          additional: { 
-            detail: { 
-              uri: uri || '', 
-              destination: destination || '', 
-              create_time: Math.floor(Date.now() / 1000), 
-              started_time: Math.floor(Date.now() / 1000), 
-              completed_time: 0, 
-              priority: 'auto' 
-            } 
-          }
+          additional: {
+            detail: {
+              uri: uri || '',
+              destination: destination || '',
+              create_time: Math.floor(Date.now() / 1000),
+              started_time: Math.floor(Date.now() / 1000),
+              completed_time: 0,
+              priority: 'auto',
+            },
+          },
         });
-        
+
         return { success: true };
       }
       if (method === 'delete') {
         const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToDelete = idsParam.split(',');
-          this.state.tasks = this.state.tasks.filter(t => !idsToDelete.includes(t.id));
+          this.state.tasks = this.state.tasks.filter((t) => !idsToDelete.includes(t.id));
         }
         return { success: true, data: [] };
       }
@@ -186,7 +232,9 @@ export class MockNasServer {
         const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToPause = idsParam.split(',');
-          this.state.tasks = this.state.tasks.map(t => idsToPause.includes(t.id) ? { ...t, status: 'paused' } : t);
+          this.state.tasks = this.state.tasks.map((t) =>
+            idsToPause.includes(t.id) ? { ...t, status: 'paused' } : t,
+          );
         }
         return { success: true };
       }
@@ -194,7 +242,9 @@ export class MockNasServer {
         const idsParam = (query.id as string) || postParams.get('id');
         if (idsParam) {
           const idsToResume = idsParam.split(',');
-          this.state.tasks = this.state.tasks.map(t => idsToResume.includes(t.id) ? { ...t, status: 'downloading' } : t);
+          this.state.tasks = this.state.tasks.map((t) =>
+            idsToResume.includes(t.id) ? { ...t, status: 'downloading' } : t,
+          );
         }
         return { success: true };
       }
@@ -206,7 +256,10 @@ export class MockNasServer {
 
     if (api === 'SYNO.FileStation.List') {
       if (method === 'list_share') {
-        return { success: true, data: { shares: [{ path: '/volume1/downloads', name: 'downloads', isdir: true }] } };
+        return {
+          success: true,
+          data: { shares: [{ path: '/volume1/downloads', name: 'downloads', isdir: true }] },
+        };
       }
       if (method === 'list') {
         const folderPath = (query.folder_path as string) || postParams.get('folder_path') || '';

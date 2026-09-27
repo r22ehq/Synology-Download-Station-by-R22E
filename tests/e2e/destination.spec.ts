@@ -1,27 +1,26 @@
 import { test, expect } from './fixtures/extension';
 
 test.describe('Destination Browser', () => {
-  test.beforeEach(async ({ page, gotoOptions, mockNas }) => {
-    await gotoOptions(page);
-    await page.getByRole('button', { name: 'Add NAS Connection' }).click();
+  test.beforeEach(async ({ page, gotoPopup, mockNas }) => {
+    await gotoPopup(page);
+    await page.getByText('Add NAS').click();
     await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
     await page.getByLabel(/Username/i).fill('admin');
-    await page.getByLabel(/Password/i).fill('password123');
+    await page.getByPlaceholder('Password').fill('password123');
     await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText(mockNas.getUrl())).toBeVisible();
   });
 
-  test('can browse root and nested folders', async ({ page, gotoPopup, mockNas }) => {
+  test('can browse and select a NAS destination', async ({ page, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
     await gotoPopup(page);
-    
-    await page.getByLabel(/Password/i).fill('password123');
+
+    await page.getByPlaceholder('Password').fill('password123');
     await page.getByRole('button', { name: 'Login' }).click();
-    
-    // Test the Add dialog
-    await page.getByPlaceholder(/Paste URL/i).fill('http://example.com/file.zip');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    // Assuming you have a folder browser button in the task add dialog
-    // We would test navigating it here. Currently the UI is not fully built for this.
+
+    await page.getByRole('button', { name: 'Open add download form' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add download' });
+    await expect(dialog.getByText('downloads')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Select' }).first().click();
+    await expect(dialog.getByText('/volume1/downloads')).toBeVisible();
   });
 });

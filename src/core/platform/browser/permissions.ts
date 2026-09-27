@@ -4,9 +4,16 @@ export const PermissionsManager = {
   async hasHostPermission(url: string): Promise<boolean> {
     try {
       const origin = new URL(url).origin + '/*';
-      return await browser.permissions.contains({
+      const hasSpecific = await browser.permissions.contains({
         origins: [origin],
       });
+      if (hasSpecific) return true;
+
+      return await browser.permissions
+        .contains({
+          origins: ['*://*/*'],
+        })
+        .catch(() => false);
     } catch {
       return false;
     }
@@ -22,7 +29,7 @@ export const PermissionsManager = {
       return false;
     }
   },
-  
+
   async removeHostPermission(url: string): Promise<boolean> {
     try {
       const origin = new URL(url).origin + '/*';
@@ -32,5 +39,5 @@ export const PermissionsManager = {
     } catch {
       return false;
     }
-  }
+  },
 };

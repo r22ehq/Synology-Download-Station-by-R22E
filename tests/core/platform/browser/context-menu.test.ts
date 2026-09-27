@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // For now, let's just mock what we need.
 import { browser } from 'wxt/browser';
+import { ContextMenuManager } from '../../../../src/core/platform/browser/context-menu';
 
 vi.mock('wxt/browser', () => ({
   browser: {
@@ -16,7 +17,14 @@ vi.mock('wxt/browser', () => ({
     },
     runtime: {
       getURL: vi.fn(path => `moz-extension://ext-id${path}`),
-    }
+    },
+    contextMenus: {
+      removeAll: vi.fn(),
+      create: vi.fn(),
+    },
+    i18n: {
+      getMessage: vi.fn(() => ''),
+    },
   }
 }));
 
@@ -107,5 +115,16 @@ describe('Context Menu Permission Flow', () => {
     vi.mocked(browser.permissions.contains as any).mockResolvedValue(true);
     const result = await handleContextMenuClick('https://tracker.example.com/file.torrent');
     expect(result).toBe('download_torrent');
+  });
+
+  it('registers download and scrape actions independently', async () => {
+    await ContextMenuManager.registerMenus({ downloadEnabled: true, scrapeEnabled: false });
+    expect(browser.contextMenus.create).toHaveBeenCalledTimes(1);
+    expect(browser.contextMenus.create).toHaveBeenCalledWith(expect.objectContaining({ id: 'r22e-download-link' }));
+
+    vi.mocked(browser.contextMenus.create).mockClear();
+    await ContextMenuManager.registerMenus({ downloadEnabled: false, scrapeEnabled: true });
+    expect(browser.contextMenus.create).toHaveBeenCalledTimes(1);
+    expect(browser.contextMenus.create).toHaveBeenCalledWith(expect.objectContaining({ id: 'r22e-scrape-page' }));
   });
 });

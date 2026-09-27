@@ -4,7 +4,7 @@
     "description": "The display name of the extension"
   },
   "extensionDescription": {
-    "message": "Manage Synology Download Station directly from your browser. Add magnet links, torrents and URLs, monitor downloads and control your Synology NAS.",
+    "message": "Manage Synology Download Station: add links, magnets and torrents, track progress, and control NAS downloads.",
     "description": "The description of the extension"
   },
   "appShortName": {
@@ -96,7 +96,7 @@
     "description": "Upload speed label"
   },
   "contextMenuDownload": {
-    "message": "Download with R22E Station",
+    "message": "Download with Synology DS",
     "description": "Context menu item for downloading a link"
   },
   "contextMenuDownloadTo": {
@@ -108,6 +108,10 @@
         "example": "Downloads"
       }
     }
+  },
+  "contextMenuScrape": {
+    "message": "Scrape page for downloads",
+    "description": "Context menu item for scraping links"
   },
   "notificationComplete": {
     "message": "Download Complete",

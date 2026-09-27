@@ -3,6 +3,9 @@ import preact from '@preact/preset-vite';
 
 export default defineConfig({
   manifestVersion: 3,
+  // Avoid bundling local test captures, credentials, or developer files into a
+  // source archive when producing Firefox and Opera release packages.
+  zip: { zipSources: false },
   srcDir: 'src',
   entrypointsDir: '../entrypoints',
     manifest: ({ browser }) => {
@@ -12,13 +15,25 @@ export default defineConfig({
       name: '__MSG_extensionName__',
       description: '__MSG_extensionDescription__',
       default_locale: 'en',
-      permissions: ['storage', 'contextMenus', 'alarms'],
+      icons: {
+        16: 'icon-16.png',
+        32: 'icon-32.png',
+        48: 'icon-48.png',
+        128: 'icon-128.png',
+      },
+      action: {
+        default_title: 'R22E Station',
+        default_icon: {
+          16: 'icon-16.png',
+          32: 'icon-32.png',
+          48: 'icon-48.png',
+          128: 'icon-128.png',
+        },
+      },
+      permissions: ['storage', 'contextMenus', 'alarms', 'activeTab', 'scripting', ...(browser === 'firefox' ? [] : ['offscreen'])],
       host_permissions: isE2E ? ['*://*/*'] : undefined,
       optional_permissions: [
         'notifications',
-        'downloads',
-        'downloads.open',
-        'clipboardRead',
         ...(browser === 'firefox' ? ['http://*/*', 'https://*/*'] : []),
       ],
       optional_host_permissions: browser === 'firefox' ? undefined : ['http://*/*', 'https://*/*'],

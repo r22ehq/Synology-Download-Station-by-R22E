@@ -1,82 +1,63 @@
-# Synology Download Station by R22E
+# R22E Station
 
-A fast, lightweight, and open-source browser client for Synology Download Station. Manage downloads, magnet links, torrents, and URLs directly from your browser.
+**Synology Download Station by R22E** — manage downloads on your own NAS without leaving the browser.
 
-## Features
+![R22E Station demo: downloading, completed, and paused tasks](docs/media/r22e-station-demo.gif)
 
-- **Direct NAS Control:** Connect directly to your Synology NAS over your local network or custom domain.
-- **Download Management:** Create, pause, resume, and delete download tasks.
-- **Protocol Support:** Add magnet links, torrent files, and HTTP/HTTPS/FTP URLs.
-- **Private Tracker Support:** Direct retrieval of torrent files from authenticated private trackers using your browser session.
-- **Destination Browser:** Browse NAS folders and select download destinations.
-- **Live Monitoring:** Real-time download/upload speeds and progress.
-- **Notifications:** Get notified when downloads complete or fail.
-- **Context Menus:** Right-click any link to download with your NAS.
-- **Side Panel:** Persistent download view while browsing (Chrome, Edge).
-- **Themes:** Light, dark, and system-following themes.
+[Product page](https://r22e.com/plugins/synology-download-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
-## Browser Support
+> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/synology-download-station) will link to the official listing as soon as it is live. Until then, release packages will be available on GitHub after the first tagged release.
 
-| Browser | Status |
-|---------|--------|
-| Google Chrome | Tested |
-| Microsoft Edge | Verified via Chromium build |
-| Mozilla Firefox | Pending manual execution |
-| Opera | Verified via Chromium build |
-| Arc | Verified via Chromium build |
-| Safari | Planned |
+## What it does
 
-## Installation
+- Add HTTP(S), FTP, magnet links, and torrent files to Synology Download Station.
+- Pause, resume, remove, search, and inspect tasks; open a completed task's destination in File Station.
+- Send a selected link from the right-click menu, or collect candidate links from the current page on demand.
+- Keep a side panel open while browsing, with responsive controls down to narrow widths.
+- Choose light, dark, or system appearance and optional completion notifications.
+- Connect directly to a local NAS or custom address. Experimental QuickConnect-ID discovery supports direct routes only, not relay.
 
-### From Source
+The extension requires your own compatible Synology NAS, Download Station, and a user account. It has no R22E cloud account, analytics, or telemetry service.
 
-```bash
-git clone https://github.com/r22ehq/Synology-Download-Station-by-R22E.git
-cd Synology-Download-Station-by-R22E
+## Interface
 
-# Install dependencies
-pnpm install
+These are captures of the actual extension using a local mock NAS and synthetic filenames. No private NAS address, account, or tracker data appears in the images.
 
-# Production build
-pnpm build:chrome
-pnpm build:firefox
-pnpm build:edge
-pnpm build:opera
-```
+| Light | Dark |
+| --- | --- |
+| ![Light task view](docs/media/tasks-light-1280x800.jpg) | ![Dark task view](docs/media/tasks-dark-1280x800.jpg) |
 
-Load the unpacked extension from `.output/chrome-mv3/` (or equivalent browser directory) into your browser's extension developer mode.
+![Appearance controls in dark mode](docs/media/appearance-dark-1280x800.jpg)
 
-## Connecting to Synology NAS
+The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progress, status, and per-task actions visible.
 
-To connect the extension to your NAS, provide your NAS URL, port, protocol (HTTP/HTTPS), and your credentials in the extension's Settings page. If your NAS uses 2-Factor Authentication, the extension will prompt you for an OTP.
+## Browser support
 
-## Permissions
+| Browser | Status | Package |
+| --- | --- | --- |
+| Google Chrome | Tested with Chromium | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Microsoft Edge | Chromium build; manual browser QA recommended | [Edge builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Mozilla Firefox | Build available; manual execution pending | [Firefox builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Opera | Chromium build; manual browser QA recommended | [Opera builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Safari | Planned | — |
 
-The extension strictly requests only the permissions necessary for core features. Host permissions are scoped exactly to the NAS URL you configure, rather than requesting global `<all_urls>` access upfront.
+The links above point to the releases page; no public package is available until the first release is tagged. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
 
-## Privacy
+## Getting connected
 
-The extension communicates directly with your configured Synology NAS and, when explicitly requested, authenticated private trackers. There is no cloud backend, analytics, tracking, or telemetry. See [PRIVACY.md](PRIVACY.md).
+Open **Settings → Connection → Add NAS**. The local connection is recommended: enter your NAS address and an account with Download Station access. HTTPS is strongly recommended, particularly outside a trusted local network. HTTP does not protect your password or task data in transit. Two-factor authentication is supported when your NAS requests a code.
 
-## Security
+QuickConnect-ID is an **unofficial experimental** option. It may break when Synology changes its service, and it cannot use QuickConnect relay. A directly reachable local address, DDNS name, or your own remote URL is more reliable.
 
-Session IDs are securely handled in session storage, and persistent device trust tokens are safely kept in local storage. The extension implements strict Content Security Policies and avoids all remote code execution. See [SECURITY.md](SECURITY.md).
+## Privacy and security
 
-## Development and Testing
+The extension requests NAS host access when you configure a connection and requests source-site access when a selected action needs it; it does not request blanket access to every website by default. Optional saved passwords are kept in extension-local browser storage **without extension-level encryption**. Review the [privacy policy](PRIVACY.md) and [security guidance](SECURITY.md) before using this on an untrusted device.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guidelines.
+This independent project is not affiliated with or endorsed by Synology Inc. Synology and Download Station are trademarks of their respective owners.
 
-```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm test:e2e
-```
+## Contributing
 
-## Disclaimer
+Build instructions, development setup, test commands, and real-NAS test safety rules live in [CONTRIBUTING.md](CONTRIBUTING.md). Maintainers can follow the [release process](RELEASING.md). Issues and pull requests are welcome.
 
-Synology Download Station by R22E is an independent open-source project and is not affiliated with or endorsed by Synology Inc. Synology and Download Station are trademarks of their respective owners.
-
-## License
-
-[MIT](LICENSE)
+Licensed under [MIT](LICENSE).

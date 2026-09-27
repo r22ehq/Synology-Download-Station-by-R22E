@@ -3,6 +3,16 @@ import { Button } from '../Button/Button';
 import { settingsStorage, profilesStorage } from '@/core/platform/storage/storage-items';
 import type { AppSettings, NasProfile } from '@/core/platform/storage/storage-items';
 import { notifications } from '@/core/platform/browser/notifications';
+import { completionSounds } from '@/core/platform/browser/completion-sounds';
+import styles from './SettingsBackup.module.css';
+
+const safePalette = (value: unknown) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const palette = value as Record<string, unknown>;
+  const keys = ['accent', 'background', 'surface', 'foreground', 'secondaryText', 'border'] as const;
+  if (!keys.every(key => typeof palette[key] === 'string' && /^#[0-9a-f]{6}$/i.test(palette[key] as string))) return undefined;
+  return Object.fromEntries(keys.map(key => [key, palette[key]])) as unknown as AppSettings['lightPalette'];
+};
 
 export const SettingsBackup = () => {
   const [loading, setLoading] = useState(false);
@@ -14,9 +24,22 @@ export const SettingsBackup = () => {
       const profiles = await profilesStorage.getValue();
       
       const backup = {
-        version: 1,
+        version: 2,
         settings: {
           theme: settings?.theme || 'system',
+          pollingInterval: settings?.pollingInterval || 3000,
+          backgroundPollingEnabled: settings?.backgroundPollingEnabled ?? true,
+          badgeMode: settings?.badgeMode || 'active',
+          notificationsEnabled: settings?.notificationsEnabled ?? true,
+          completionSoundEnabled: settings?.completionSoundEnabled ?? true,
+          completionSound: settings?.completionSound || 'soft',
+          contextMenuDownloadEnabled: settings?.contextMenuDownloadEnabled ?? settings?.contextMenuEnabled ?? true,
+          contextMenuScrapeEnabled: settings?.contextMenuScrapeEnabled ?? settings?.contextMenuEnabled ?? true,
+          downloadInterceptionEnabled: settings?.downloadInterceptionEnabled ?? false,
+          lightPreset: settings?.lightPreset || 'frost',
+          darkPreset: settings?.darkPreset || 'midnight',
+          lightPalette: settings?.lightPalette,
+          darkPalette: settings?.darkPalette,
         },
         profiles: (profiles || []).map(p => ({
           id: p.id,
@@ -25,6 +48,7 @@ export const SettingsBackup = () => {
           port: p.port,
           protocol: p.protocol,
           username: p.username,
+          quickConnectId: p.quickConnectId,
           defaultDestination: p.defaultDestination,
         })),
       };
@@ -71,7 +95,7 @@ export const SettingsBackup = () => {
       
       const b = backup as Record<string, unknown>;
       
-      if (!b.version || typeof b.version !== 'number' || b.version > 1) {
+      if (!b.version || typeof b.version !== 'number' || b.version > 2) {
         throw new Error('Unsupported backup version');
       }
       
@@ -81,6 +105,20 @@ export const SettingsBackup = () => {
         if (['light', 'dark', 'system'].includes(bSettings.theme as string)) {
           newSettings.theme = bSettings.theme as 'light' | 'dark' | 'system';
         }
+        if (typeof bSettings.pollingInterval === 'number' && [3000, 5000, 10000, 30000].includes(bSettings.pollingInterval)) newSettings.pollingInterval = bSettings.pollingInterval;
+        if (['none', 'active', 'downloading', 'failed'].includes(bSettings.badgeMode as string)) newSettings.badgeMode = bSettings.badgeMode as AppSettings['badgeMode'];
+        for (const key of ['backgroundPollingEnabled', 'notificationsEnabled', 'completionSoundEnabled', 'contextMenuDownloadEnabled', 'contextMenuScrapeEnabled', 'downloadInterceptionEnabled'] as const) {
+          if (typeof bSettings[key] === 'boolean') newSettings[key] = bSettings[key];
+        }
+        if (completionSounds.some(sound => sound.id === bSettings.completionSound)) {
+          newSettings.completionSound = bSettings.completionSound as AppSettings['completionSound'];
+        }
+        if (typeof bSettings.lightPreset === 'string') newSettings.lightPreset = bSettings.lightPreset;
+        if (typeof bSettings.darkPreset === 'string') newSettings.darkPreset = bSettings.darkPreset;
+        const lightPalette = safePalette(bSettings.lightPalette);
+        const darkPalette = safePalette(bSettings.darkPalette);
+        if (lightPalette) newSettings.lightPalette = lightPalette;
+        if (darkPalette) newSettings.darkPalette = darkPalette;
       }
       
       const newProfiles: NasProfile[] = [];
@@ -106,6 +144,7 @@ export const SettingsBackup = () => {
             port: typeof p.port === 'number' ? p.port : 5000,
             protocol: ['http', 'https'].includes(p.protocol as string) ? p.protocol as 'http' | 'https' : 'http',
             username: typeof p.username === 'string' ? p.username : '',
+            quickConnectId: typeof p.quickConnectId === 'string' ? p.quickConnectId : undefined,
             defaultDestination: typeof p.defaultDestination === 'string' ? p.defaultDestination : '',
           });
         }
@@ -116,7 +155,7 @@ export const SettingsBackup = () => {
       
       try {
         if (Object.keys(newSettings).length > 0) {
-          await settingsStorage.setValue(newSettings as AppSettings);
+          await settingsStorage.setValue({ ...oldSettings, ...newSettings } as AppSettings);
         }
         if (newProfiles.length > 0) {
           await profilesStorage.setValue(newProfiles);
@@ -138,24 +177,28 @@ export const SettingsBackup = () => {
   };
 
   return (
-    <div>
-      <h3>Backup & Restore</h3>
-      <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-        <Button onClick={handleExport} isLoading={loading}>Export Settings</Button>
-        <div style={{ position: 'relative' }}>
-          <Button variant="secondary" isLoading={loading}>Import Settings</Button>
+    <section className={styles.card}>
+      <h3>Backup & restore</h3>
+      <p>
+        Includes appearance palettes, refresh and badge preferences, notification and browser-integration settings, plus NAS profile names, addresses, usernames and default destinations.
+      </p>
+      <p className={styles.note}>
+        Never includes passwords, verification codes, active sessions, remembered-device tokens, cookies, task history or downloaded files.
+      </p>
+      <div className={styles.actions}>
+        <Button size="sm" onClick={handleExport} isLoading={loading}>Export Settings</Button>
+        <div className={styles.importWrap}>
+          <Button variant="secondary" size="sm" isLoading={loading}>Import Settings</Button>
           <input 
             type="file" 
             accept=".json"
             onChange={handleImport}
             disabled={loading}
-            style={{ 
-              position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-              opacity: 0, cursor: 'pointer' 
-            }} 
+            className={styles.fileInput}
+            aria-label="Import settings file"
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 };

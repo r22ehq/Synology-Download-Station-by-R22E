@@ -32,7 +32,7 @@ export class ConnectionManager {
    * Main connection loop: attempts to connect to the active profile.
    * Dispatches state to the FSM.
    */
-  public async connect(profileId: string, otpCode?: string, password?: string): Promise<void> {
+  public async connect(profileId: string, otpCode?: string, password?: string, rememberDevice?: boolean): Promise<void> {
     this.stateMachine.startConnecting();
     
     try {
@@ -63,16 +63,22 @@ export class ConnectionManager {
 
       const authDeviceItem = getAuthDeviceStorageItem(profileId);
       const deviceId = await authDeviceItem.getValue();
+      if (!password) throw new Error('A NAS password is required to sign in.');
       const deviceName = 'R22E Station';
       const loginOptions: import('@/core/synology/auth/types').LoginOptions = {};
 
-      if (deviceId && !otpCode) {
+      if (deviceId && !otpCode && rememberDevice !== false) {
         // If we have a deviceId and no OTP is provided, try auto-login
         loginOptions.deviceId = deviceId;
         loginOptions.deviceName = deviceName;
       } else if (otpCode) {
-        // First login with OTP, request device token
+        // First login with OTP, request device token if rememberDevice is explicitly true or undefined
         loginOptions.otpCode = otpCode;
+        if (rememberDevice) {
+          loginOptions.enableDeviceToken = 'yes';
+          loginOptions.deviceName = deviceName;
+        }
+      } else if (rememberDevice) {
         loginOptions.enableDeviceToken = 'yes';
         loginOptions.deviceName = deviceName;
       }
@@ -82,14 +88,18 @@ export class ConnectionManager {
           baseUrl,
           this.registry,
           profile.username,
-          password || 'placeholder',
+          password,
           loginOptions
         );
 
         // Save device token if returned (did or device_id)
-        const newDeviceId = result.did || result.device_id || deviceId;
-        if (newDeviceId && newDeviceId !== deviceId) {
-          await authDeviceItem.setValue(newDeviceId);
+        if (rememberDevice === false) {
+          await authDeviceItem.removeValue();
+        } else {
+          const newDeviceId = result.did || result.device_id || deviceId;
+          if (newDeviceId && newDeviceId !== deviceId) {
+            await authDeviceItem.setValue(newDeviceId);
+          }
         }
 
         // Store Session

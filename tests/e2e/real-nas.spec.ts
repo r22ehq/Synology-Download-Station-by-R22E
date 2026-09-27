@@ -59,7 +59,7 @@ test.describe('Real NAS Integration Suite', () => {
       try {
         await taskClient.delete(config.nasUrl, apiRegistry, harnessSid, taskIds, false);
       } catch (err) {
-        throw new Error(`API delete command failed: ${err}`);
+        throw new Error(`API delete command failed: ${err}`, { cause: err });
       }
 
       const tasks = await getTasks();
@@ -79,17 +79,17 @@ test.describe('Real NAS Integration Suite', () => {
       resourceRegistry.clear();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`FATAL CLEANUP FAILURE: ${msg}. Remaining task IDs: ${pending.map(t => t.id).join(',')}`);
+      throw new Error(`FATAL CLEANUP FAILURE: ${msg}. Remaining task IDs: ${pending.map(t => t.id).join(',')}`, { cause: err });
     }
   });
 
-  test('end-to-end integration flow safely isolated', async ({ page, gotoOptions, gotoPopup }) => {
+  test('end-to-end integration flow safely isolated', async ({ page, gotoPopup }) => {
     test.setTimeout(90000);
     if (!config) return;
 
     // Product path auth
-    await gotoOptions(page);
-    await page.getByRole('button', { name: 'Add NAS Connection' }).click();
+    await gotoPopup(page);
+    await page.getByText('Add NAS').click();
     await page.getByLabel(/NAS URL/i).fill(config.nasUrl);
     await page.getByLabel(/Username/i).fill(config.username);
     await page.getByRole('button', { name: 'Save Profile' }).click();

@@ -37,7 +37,7 @@
 }
 
 .danger {
-  background-color: var(--color-danger, #ef4444);
+  background-color: var(--color-danger);
   color: #ffffff;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .ghost:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--color-surface-hover);
 }
 
 .sm {

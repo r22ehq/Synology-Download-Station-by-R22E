@@ -1,0 +1,5 @@
+.wrap { position: relative; display: inline-flex; width: 180px; max-width: 100%; min-width: 0; vertical-align: middle; }
+.wrap select { appearance: none; width: 100%; min-width: 0; height: 34px; padding: 0 34px 0 11px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-input-bg); color: var(--color-input-text); font-size: var(--font-size-sm); line-height: 1.2; cursor: pointer; text-align: start; }
+.wrap select:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+.wrap svg { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+@media (max-width: 560px) { .wrap { width: 100%; } }

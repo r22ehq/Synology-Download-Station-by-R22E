@@ -23,9 +23,13 @@ vi.mock('../../../../src/core/platform/browser/notifications', () => ({
     show: vi.fn(),
   },
 }));
+vi.mock('../../../../src/core/platform/browser/completion-sound', () => ({
+  completionSound: { play: vi.fn() },
+}));
 
 import { TaskTracker } from '../../../../src/core/platform/browser/task-tracker';
 import { notifications } from '../../../../src/core/platform/browser/notifications';
+import { completionSound } from '../../../../src/core/platform/browser/completion-sound';
 
 describe('TaskTracker', () => {
   let tracker: TaskTracker;
@@ -48,6 +52,7 @@ describe('TaskTracker', () => {
       makeTask('task-2', 'finished')
     ]);
     expect(notifications.show).not.toHaveBeenCalled();
+    expect(completionSound.play).not.toHaveBeenCalled();
 
     // Subsequent transition triggers notification
     await tracker.updateTasks('profile-1', [
@@ -55,6 +60,7 @@ describe('TaskTracker', () => {
       makeTask('task-2', 'finished')
     ]);
     expect(notifications.show).toHaveBeenCalledTimes(1);
+    expect(completionSound.play).toHaveBeenCalledTimes(1);
     expect(notifications.show).toHaveBeenCalledWith('task-profile-1-task-1-done', 'Task Completed', 'Task task-1 has finished downloading.');
   });
 
@@ -71,6 +77,14 @@ describe('TaskTracker', () => {
 
     // Should only notify ONCE
     expect(notifications.show).toHaveBeenCalledTimes(1);
+    expect(completionSound.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('plays one gentle sound when several tasks complete in the same refresh', async () => {
+    await tracker.updateTasks('profile-1', [makeTask('one', 'downloading'), makeTask('two', 'downloading')]);
+    await tracker.updateTasks('profile-1', [makeTask('one', 'finished'), makeTask('two', 'finished')]);
+    expect(notifications.show).toHaveBeenCalledTimes(2);
+    expect(completionSound.play).toHaveBeenCalledTimes(1);
   });
 
   it('should isolate states between profiles', async () => {

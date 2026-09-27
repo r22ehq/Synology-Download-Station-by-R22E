@@ -1,4 +1,5 @@
 import { ConnectionManager } from './connection-manager';
+import { getAuthDeviceStorageItem, getSavedPasswordStorageItem } from '@/core/platform/storage/storage-items';
 import {
   mapSynologyError,
   SessionExpiredError,
@@ -27,8 +28,11 @@ export class SessionRecoveryManager {
         // Clear session first
         this.connectionManager.logout(profileId).catch(() => {});
 
-        // Re-authenticate
-        await this.connectionManager.connect(profileId);
+        // Re-authenticate only when the user explicitly saved a password.
+        const password = await getSavedPasswordStorageItem(profileId).getValue();
+        if (!password) throw err;
+        const rememberDevice = Boolean(await getAuthDeviceStorageItem(profileId).getValue());
+        await this.connectionManager.connect(profileId, undefined, password, rememberDevice);
 
         // Retry only if idempotent
         if (options.isIdempotent) {

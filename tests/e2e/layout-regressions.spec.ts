@@ -1,0 +1,86 @@
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { test, expect } from './fixtures/extension';
+
+test('keeps transfer columns readable and Appearance aligned with app mode', async ({ page, gotoPopup, mockNas }) => {
+  mockNas.state.statistics = { speed_download: 23_200_000, speed_upload: 700_000 };
+  mockNas.state.tasks = [{
+    id: 'layout-task', title: 'MobLand.S01E07.1080p.mkv', status: 'downloading',
+    size: 1_000_000_000, type: 'http', username: 'admin',
+    additional: { transfer: { size_downloaded: 930_000_000, size_uploaded: 0, speed_download: 23_200_000, speed_upload: 700_000 } },
+  }];
+
+  await page.setViewportSize({ width: 580, height: 640 });
+  await gotoPopup(page);
+  await expect(page).toHaveURL(/\/popup\.html$/);
+  await expect(page).toHaveTitle('R22E Station');
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  await page.getByText('Add NAS').click();
+  await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
+  await page.getByLabel(/Username/i).fill('admin');
+  await page.getByPlaceholder('Password').fill('password123');
+  await page.getByRole('button', { name: 'Save Profile' }).click();
+  await page.getByPlaceholder('Password').fill('password123');
+  await page.getByRole('button', { name: 'Login' }).click();
+  const row = page.getByRole('button', { name: 'MobLand.S01E07.1080p.mkv', exact: true }).locator('..');
+  await expect(row).toBeVisible();
+
+  const progress = row.locator('[class*="progressCell"]');
+  const speed = row.locator('[class*="speedCell"]');
+  const status = row.locator('[class*="status"]');
+  const [progressBox, speedBox, statusBox] = await Promise.all([progress.boundingBox(), speed.boundingBox(), status.boundingBox()]);
+  expect(progressBox).not.toBeNull();
+  expect(speedBox).not.toBeNull();
+  expect(statusBox).not.toBeNull();
+  expect(speedBox!.x - progressBox!.x - progressBox!.width).toBeLessThanOrEqual(12);
+  expect(statusBox!.x - speedBox!.x - speedBox!.width).toBeLessThanOrEqual(12);
+  expect(await status.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect(speed.locator('svg.lucide-arrow-up')).toHaveCount(1);
+  await expect(page.getByLabel('Current transfer speed').locator('svg.lucide-arrow-up')).toHaveCount(1);
+  await page.screenshot({ path: path.join(tmpdir(), 'r22e-transfer-layout-580.png') });
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Appearance' }).click();
+  await page.getByRole('tab', { name: 'Dark', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('tab', { name: 'Dark', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Light', exact: true }).click();
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await page.getByRole('button', { name: 'Appearance' }).click();
+  await expect(page.getByRole('tab', { name: 'Light', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Dark', exact: true })).toHaveAttribute('aria-selected', 'false');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('tab', { name: 'Dark', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Dark', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect.poll(async () => {
+    const indicator = await page.getByTestId('palette-tab-indicator').boundingBox();
+    const tab = await page.getByRole('tab', { name: 'Dark', exact: true }).boundingBox();
+    return Math.abs((indicator?.x ?? 0) - (tab?.x ?? 0));
+  }).toBeLessThan(1);
+  await expect(page.getByText('Toolbar badge')).toBeVisible();
+  await page.screenshot({ path: path.join(tmpdir(), 'r22e-appearance-dark-matched-palette-580.png') });
+  const badgeSection = page.locator('[class*="badgeSection"]');
+  expect(await badgeSection.evaluate(element => parseFloat(getComputedStyle(element).borderTopWidth))).toBeGreaterThan(0);
+  await badgeSection.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(tmpdir(), 'r22e-appearance-badge-divider-580.png') });
+  await page.getByRole('tab', { name: 'Light', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Light', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('tab', { name: 'Dark', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Dark', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.getByRole('tab', { name: 'System', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'System', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Following your browser · editing dark colors')).toBeVisible();
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.getByText('Following your browser · editing light colors')).toBeVisible();
+  await page.getByRole('tab', { name: 'Dark', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Dark', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(row).toBeVisible();
+  expect(await status.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.screenshot({ path: path.join(tmpdir(), 'r22e-transfer-layout-dark-580.png') });
+});

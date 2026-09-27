@@ -9,6 +9,7 @@ export interface ButtonProps extends JSX.HTMLAttributes<HTMLButtonElement> {
   icon?: ComponentChildren;
   children?: ComponentChildren;
   disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
 }
 
 export function Button({

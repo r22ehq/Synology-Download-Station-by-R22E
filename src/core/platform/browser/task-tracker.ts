@@ -1,5 +1,6 @@
 import type { DownloadTask } from '../../synology/download-station/types';
 import { notifications } from './notifications';
+import { completionSound } from './completion-sound';
 
 export type TaskStatus = DownloadTask['status'];
 
@@ -34,6 +35,7 @@ export class TaskTracker {
     const isColdStart = !state.initialized;
     const newTasksState: Record<string, TaskStatus> = {};
     let hasChanges = false;
+    let playedCompletionSound = false;
 
     for (const task of currentTasks) {
       newTasksState[task.id] = task.status;
@@ -42,7 +44,11 @@ export class TaskTracker {
         const prevStatus = state.tasks[task.id];
         if (prevStatus && prevStatus !== task.status) {
           if (task.status === 'finished') {
-            await notifications.show(`task-${profileId}-${task.id}-done`, 'Task Completed', `${task.title} has finished downloading.`);
+            await Promise.allSettled([
+              notifications.show(`task-${profileId}-${task.id}-done`, 'Task Completed', `${task.title} has finished downloading.`),
+              ...(playedCompletionSound ? [] : [completionSound.play()]),
+            ]);
+            playedCompletionSound = true;
           } else if (task.status === 'error') {
             await notifications.show(`task-${profileId}-${task.id}-error`, 'Task Failed', `${task.title} encountered an error.`);
           }

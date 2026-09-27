@@ -45,4 +45,14 @@ export class RefreshCoordinator<T> {
   public clearCache(profileId: string): void {
     this.cache.delete(profileId);
   }
+
+  /** Ensure a real fetch after any older in-flight request has settled. */
+  public async forceRefresh(profileId: string): Promise<T> {
+    const pending = this.inFlight.get(profileId);
+    if (pending) {
+      try { await pending; } catch { /* A newer request may still succeed. */ }
+    }
+    this.clearCache(profileId);
+    return this.requestRefresh(profileId);
+  }
 }

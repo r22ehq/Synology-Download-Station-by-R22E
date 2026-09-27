@@ -8,6 +8,20 @@ const __dirname = path.dirname(__filename);
 
 import { MockNasServer } from './mock-server';
 
+// Chromium may briefly block extension pages while chrome.runtime.reload()
+// re-registers the MV3 extension. Retry only that transient navigation error.
+async function navigateToExtensionPage(page: Page, url: string) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      await page.goto(url);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('ERR_BLOCKED_BY_CLIENT') || attempt === 7) throw error;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+  }
+}
+
 export const test = base.extend<{
   context: BrowserContext;
   extensionId: string;
@@ -17,6 +31,7 @@ export const test = base.extend<{
   gotoSidePanel: (page: Page) => Promise<void>;
   gotoPrompt: (page: Page) => Promise<void>;
 }>({
+  // eslint-disable-next-line no-empty-pattern
   mockNas: [async ({}, use) => {
     const server = new MockNasServer();
     await server.start();
@@ -24,10 +39,12 @@ export const test = base.extend<{
     await server.stop();
   }, { scope: 'test' }],
 
+  // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const pathToExtension = path.resolve(__dirname, '../../../.output/chrome-mv3');
     const context = await chromium.launchPersistentContext('', {
       headless: false,
+      channel: process.env.R22E_BROWSER_CHANNEL as 'chrome' | 'msedge' | undefined,
       args: [
         `--disable-extensions-except=${pathToExtension}`,
         `--load-extension=${pathToExtension}`,
@@ -67,22 +84,22 @@ export const test = base.extend<{
   },
   gotoPopup: async ({ extensionId }, use) => {
     await use(async (page: Page) => {
-      await page.goto(`chrome-extension://${extensionId}/popup.html`);
+      await navigateToExtensionPage(page, `chrome-extension://${extensionId}/popup.html`);
     });
   },
   gotoOptions: async ({ extensionId }, use) => {
     await use(async (page: Page) => {
-      await page.goto(`chrome-extension://${extensionId}/options.html`);
+      await navigateToExtensionPage(page, `chrome-extension://${extensionId}/options.html`);
     });
   },
   gotoSidePanel: async ({ extensionId }, use) => {
     await use(async (page: Page) => {
-      await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+      await navigateToExtensionPage(page, `chrome-extension://${extensionId}/sidepanel.html`);
     });
   },
   gotoPrompt: async ({ extensionId }, use) => {
     await use(async (page: Page) => {
-      await page.goto(`chrome-extension://${extensionId}/prompt.html`);
+      await navigateToExtensionPage(page, `chrome-extension://${extensionId}/prompt.html`);
     });
   },
 });

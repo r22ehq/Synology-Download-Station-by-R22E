@@ -106,7 +106,7 @@ export class TaskClient {
         if (!safeName || safeName.trim() === '_') {
           safeName = 'upload';
         }
-        if (!safeName.toLowerCase().endsWith('.torrent')) {
+        if (!/\.(torrent|nzb)$/i.test(safeName)) {
           safeName = `${safeName}.torrent`;
         }
         

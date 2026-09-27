@@ -26,6 +26,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Verify tag matches package version
+        run: node -e "const p=require('./package.json');if(process.env.GITHUB_REF_NAME!=='v'+p.version){throw new Error('Tag must match package version '+p.version)}"
+
       - name: Quality gates
         run: |
           pnpm typecheck
@@ -41,12 +44,52 @@ jobs:
       - name: Generate checksums
         run: |
           cd .output
-          sha256sum *.zip > checksums.sha256
+          sha256sum *-chrome.zip *-edge.zip *-firefox.zip *-opera.zip > checksums.sha256
+
+      - name: Keep Chrome package for Store deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-store-package
+          path: .output/*-chrome.zip
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            .output/*.zip
+            .output/*-chrome.zip
+            .output/*-edge.zip
+            .output/*-firefox.zip
+            .output/*-opera.zip
             .output/checksums.sha256
+
+  chrome-web-store:
+    name: Submit Chrome package for review
+    if: vars.CWS_AUTOPUBLISH_ENABLED == 'true'
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chrome-store-package
+          path: store-package
+      - id: google-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+      - name: Upload and submit to Chrome Web Store
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+        run: node scripts/publish-chrome-web-store.mjs store-package/*-chrome.zip

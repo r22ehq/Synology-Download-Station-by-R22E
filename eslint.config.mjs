@@ -4,6 +4,17 @@ import globals from 'globals';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/.output/**',
+      '**/.wxt/**',
+      '**/dist/**',
+      '**/scratch/**',
+      '*.config.*',
+      '*.cjs'
+    ],
+  },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
@@ -33,16 +44,5 @@ export default tseslint.config(
       'no-implied-eval': 'error',
       'no-new-func': 'error',
     },
-  },
-  {
-    ignores: [
-      'node_modules/',
-      '.output/',
-      '.wxt/',
-      'dist/',
-      '*.config.*',
-      '*.cjs',
-      'tests/',
-    ],
   }
 );

@@ -63,4 +63,18 @@ describe('RefreshCoordinator', () => {
     expect(fetchFn).toHaveBeenCalledWith('profile1');
     expect(fetchFn).toHaveBeenCalledWith('profile2');
   });
+
+  it('fetches fresh data after an older in-flight request when forced', async () => {
+    let resolveFirst: ((value: string) => void) | undefined;
+    const fetchFn = vi.fn()
+      .mockImplementationOnce(() => new Promise<string>(resolve => { resolveFirst = resolve; }))
+      .mockResolvedValue('after-login');
+    const coordinator = new RefreshCoordinator(fetchFn, 2000);
+    const stale = coordinator.requestRefresh('profile1');
+    const fresh = coordinator.forceRefresh('profile1');
+    resolveFirst?.('before-login');
+    await stale;
+    expect(await fresh).toBe('after-login');
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
 });

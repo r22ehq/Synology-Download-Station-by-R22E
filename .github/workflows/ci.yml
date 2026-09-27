@@ -71,6 +71,19 @@ jobs:
             console.log('Production manifest verified: no test-only permissions');
           "
 
+      - name: Package ${{ matrix.browser }} preview
+        if: github.event_name == 'push'
+        run: pnpm zip:${{ matrix.browser }}
+
+      - name: Upload installable preview
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.browser }}-package-${{ github.sha }}
+          path: .output/*-${{ matrix.browser }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

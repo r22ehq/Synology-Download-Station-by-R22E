@@ -33,8 +33,8 @@ export function loadRealNasTestConfig(): RealNasTestConfig | null {
   let normalizedUrl: string;
   try {
     normalizedUrl = normalizeNasUrl(rawUrl).baseUrl;
-  } catch (err) {
-    throw new Error('Real NAS testing enabled but R22E_TEST_NAS_URL is malformed.');
+  } catch (e) {
+    throw new Error('Real NAS testing enabled but R22E_TEST_NAS_URL is malformed.', { cause: e });
   }
 
   return Object.freeze({

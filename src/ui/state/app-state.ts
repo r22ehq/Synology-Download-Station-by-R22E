@@ -3,8 +3,10 @@ import {
   activeProfileIdStorage,
   profilesStorage,
   settingsStorage,
+  removeProfileData,
 } from '@/core/platform/storage/storage-items';
 import type { NasProfile, AppSettings } from '@/core/platform/storage/storage-items';
+import { applyAppearance } from '../theme/appearance';
 
 // Global state signals
 export const profiles = signal<NasProfile[]>([]);
@@ -69,12 +71,14 @@ export const initAppState = async () => {
       settings.value = newValue;
       if (typeof document !== 'undefined') {
         document.documentElement.dataset.theme = newValue.theme || 'system';
+        applyAppearance(newValue);
       }
     }
   });
 
   if (initialSettings && typeof document !== 'undefined') {
     document.documentElement.dataset.theme = initialSettings.theme || 'system';
+    applyAppearance(initialSettings);
   }
 };
 
@@ -104,21 +108,16 @@ export const updateProfile = async (id: string, updates: Partial<NasProfile>) =>
 };
 
 export const removeProfile = async (id: string) => {
-  const current = (await profilesStorage.getValue()) || [];
-  const updated = current.filter((p: NasProfile) => p.id !== id);
-  await profilesStorage.setValue(updated);
-
-  if (activeProfileId.value === id) {
-    await activeProfileIdStorage.setValue(updated.length > 0 ? (updated[0]?.id ?? null) : null);
-  }
+  await removeProfileData(id);
 };
 
-export const updateSettings = async (updates: Partial<AppSettings>) => {
-  const current = await settingsStorage.getValue();
-  if (current) {
-    const updated = { ...current, ...updates };
-    await settingsStorage.setValue(updated);
-  }
+let settingsUpdateQueue: Promise<void> = Promise.resolve();
+export const updateSettings = (updates: Partial<AppSettings>): Promise<void> => {
+  settingsUpdateQueue = settingsUpdateQueue.catch(() => {}).then(async () => {
+    const current = await settingsStorage.getValue();
+    if (current) await settingsStorage.setValue({ ...current, ...updates });
+  });
+  return settingsUpdateQueue;
 };
 
 export const setActiveProfile = async (id: string) => {

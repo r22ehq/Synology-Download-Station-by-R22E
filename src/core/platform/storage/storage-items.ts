@@ -10,6 +10,8 @@
  * Import path 'wxt/storage' is resolved by WXT during build.
  */
 import { storage } from 'wxt/utils/storage';
+import type { DownloadTask } from '@/core/synology/download-station/types';
+import type { CompletionSoundId } from '../browser/completion-sounds';
 
 export interface NasProfile {
   id: string;
@@ -18,16 +20,35 @@ export interface NasProfile {
   port: number;
   protocol: 'http' | 'https';
   username: string;
+  quickConnectId?: string;
   defaultDestination?: string;
+}
+
+export interface ThemePalette {
+  accent: string;
+  background: string;
+  surface: string;
+  foreground: string;
+  secondaryText: string;
+  border: string;
 }
 
 export interface AppSettings {
   pollingInterval: number;
+  backgroundPollingEnabled: boolean;
   badgeMode: 'none' | 'active' | 'downloading' | 'failed';
   theme: 'light' | 'dark' | 'system';
   notificationsEnabled: boolean;
-  contextMenuEnabled: boolean;
+  completionSoundEnabled: boolean;
+  completionSound: CompletionSoundId;
+  contextMenuEnabled?: boolean;
+  contextMenuDownloadEnabled: boolean;
+  contextMenuScrapeEnabled: boolean;
   downloadInterceptionEnabled: boolean;
+  lightPreset: string;
+  darkPreset: string;
+  lightPalette: ThemePalette;
+  darkPalette: ThemePalette;
 }
 
 export interface TaskCacheEntry {
@@ -50,6 +71,24 @@ export interface NotificationState {
   notifiedTaskIds: string[];
 }
 
+export interface TaskSnapshot {
+  profileId: string | null;
+  tasks: DownloadTask[];
+  stats: {
+    speedDownload: number;
+    speedUpload: number;
+  };
+  updatedAt: number;
+  error?: string;
+}
+
+export interface ScrapeResource {
+  id: string;
+  url: string;
+  kind: 'link' | 'magnet' | 'torrent' | 'image' | 'video' | 'audio';
+  label: string;
+}
+
 export const profilesStorage = storage.defineItem<NasProfile[]>('local:profiles', {
   defaultValue: [],
 });
@@ -61,11 +100,33 @@ export const activeProfileIdStorage = storage.defineItem<string | null>('local:a
 export const settingsStorage = storage.defineItem<AppSettings>('local:settings', {
   defaultValue: {
     pollingInterval: 3000,
+    backgroundPollingEnabled: true,
     badgeMode: 'active',
     theme: 'system',
     notificationsEnabled: true,
-    contextMenuEnabled: true,
+    completionSoundEnabled: true,
+    completionSound: 'soft',
+    contextMenuDownloadEnabled: true,
+    contextMenuScrapeEnabled: true,
     downloadInterceptionEnabled: false,
+    lightPreset: 'frost',
+    darkPreset: 'midnight',
+    lightPalette: {
+      accent: '#2563eb',
+      background: '#eef1f5',
+      surface: '#ffffff',
+      foreground: '#1a1a1a',
+      secondaryText: '#6b7280',
+      border: '#e5e7eb',
+    },
+    darkPalette: {
+      accent: '#4c8bf5',
+      background: '#111318',
+      surface: '#1a1d23',
+      foreground: '#f2f4f7',
+      secondaryText: '#9098a5',
+      border: '#2c323c',
+    },
   },
 });
 
@@ -93,6 +154,19 @@ export const notificationStateStorage = storage.defineItem<NotificationState>(
   },
 );
 
+export const taskSnapshotStorage = storage.defineItem<TaskSnapshot>('session:taskSnapshot', {
+  defaultValue: {
+    profileId: null,
+    tasks: [],
+    stats: { speedDownload: 0, speedUpload: 0 },
+    updatedAt: 0,
+  },
+});
+
+export const scrapeResultsStorage = storage.defineItem<ScrapeResource[]>('session:scrapeResults', {
+  defaultValue: [],
+});
+
 import type { ProfileTaskState } from '../browser/task-tracker';
 
 export const getTrackerStorageItem = (profileId: string) => {
@@ -107,6 +181,22 @@ export const getAuthDeviceStorageItem = (profileId: string) => {
   });
 };
 
+/** Opt-in credentials and remembered sessions never use sync storage or settings backup. */
+export const getSavedPasswordStorageItem = (profileId: string) => storage.defineItem<string | null>(
+  `local:savedPassword_${profileId}`,
+  { defaultValue: null },
+);
+
+export const getRememberedSessionStorageItem = (profileId: string) => storage.defineItem<SessionData | null>(
+  `local:rememberedSession_${profileId}`,
+  { defaultValue: null },
+);
+
+export const getAutoLoginSuppressedStorageItem = (profileId: string) => storage.defineItem<boolean>(
+  `local:autoLoginSuppressed_${profileId}`,
+  { defaultValue: false },
+);
+
 export const removeProfileData = async (profileId: string) => {
   // Remove profile from profilesStorage
   const profiles = await profilesStorage.getValue();
@@ -118,7 +208,7 @@ export const removeProfileData = async (profileId: string) => {
   }
 
   // Remove from sessions storage
-  const sessions = await sessionDataStorage.getValue();
+  const sessions = { ...(await sessionDataStorage.getValue()) };
   if (sessions[profileId]) {
     delete sessions[profileId];
     await sessionDataStorage.setValue(sessions);
@@ -129,4 +219,17 @@ export const removeProfileData = async (profileId: string) => {
   
   // Remove auth device token
   await getAuthDeviceStorageItem(profileId).removeValue();
+  await getSavedPasswordStorageItem(profileId).removeValue();
+  await getRememberedSessionStorageItem(profileId).removeValue();
+  await getAutoLoginSuppressedStorageItem(profileId).removeValue();
+
+  const snapshot = await taskSnapshotStorage.getValue();
+  if (snapshot.profileId === profileId) {
+    await taskSnapshotStorage.setValue({
+      profileId: null,
+      tasks: [],
+      stats: { speedDownload: 0, speedUpload: 0 },
+      updatedAt: Date.now(),
+    });
+  }
 };

@@ -34,9 +34,10 @@ This extension is designed around strict, verifiable security practices:
 - **Private Trackers:** Accessing private trackers to retrieve torrent files requires explicit user initiation and optional origin permissions.
 
 ### Storage and Credential Safety
-- **No Password Persistence:** The extension does not persistently store your NAS password. 
-- **Session State:** Short-lived session IDs (SIDs) are stored in the browser extension's session storage.
+- **Opt-in Password Persistence:** By default the extension does not save your NAS password. If you select **Save password on this device**, it is stored in browser extension local storage to support automatic sign-in. This is not end-to-end encrypted by the extension; do not enable it on a shared browser profile or device.
+- **Session State:** Active session IDs (SIDs) are stored in browser extension session storage. If **Remember this device** is enabled, a remembered session may also be stored locally.
 - **Device Tokens:** If you opt into remembering your device for 2FA, the persistent Synology device token is stored in the browser extension's local storage.
+- **Transport:** Prefer HTTPS for NAS connections. User-configured HTTP connections are supported for local compatibility but expose credentials and session data to interception on the network.
 - **Log Sanitation:** Passwords and tokens are intentionally omitted from UI error states and development logs.
 
 ### Content Scripts & Remote Code

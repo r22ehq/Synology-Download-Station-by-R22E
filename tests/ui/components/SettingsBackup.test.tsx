@@ -58,7 +58,16 @@ describe('SettingsBackup', () => {
     const text = await blobArg.text();
     const parsed = JSON.parse(text);
     
-    expect(parsed.settings).toEqual({ theme: 'dark' });
+    expect(parsed.version).toBe(2);
+    expect(parsed.settings).toEqual(expect.objectContaining({
+      theme: 'dark',
+      pollingInterval: 3000,
+      badgeMode: 'active',
+      completionSoundEnabled: true,
+      completionSound: 'soft',
+      contextMenuDownloadEnabled: true,
+      contextMenuScrapeEnabled: true,
+    }));
     expect(parsed.settings.secretKey).toBeUndefined();
     
     expect(parsed.profiles).toHaveLength(1);
