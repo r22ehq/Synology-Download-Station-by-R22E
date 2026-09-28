@@ -1,5 +1,7 @@
-.overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: var(--space-4); background: rgba(5, 8, 12, .68); backdrop-filter: blur(3px); }
-.modal { width: min(540px, 100%); max-height: calc(100vh - 24px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: 12px; background: var(--color-surface-1); box-shadow: var(--shadow-lg); }
+.overlay { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: center; justify-content: center; padding: var(--space-4); background: rgba(5, 8, 12, .68); animation: modalBackdrop 120ms ease-out both; }
+.modal { width: min(540px, 100%); max-height: calc(100vh - 24px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: 12px; background: var(--color-surface-1); box-shadow: var(--shadow-lg); animation: modalEnter 150ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes modalBackdrop { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalEnter { from { opacity: .8; transform: translateY(5px) scale(.99); } to { opacity: 1; transform: none; } }
 .header { min-height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-4); border-bottom: 1px solid var(--color-border); }
 .header > div { display: flex; align-items: center; gap: 10px; }
 .header h2 { margin: 0; font-size: var(--font-size-xl); }

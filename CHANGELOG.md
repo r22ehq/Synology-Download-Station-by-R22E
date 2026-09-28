@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.1.4] - 2026-09-28
+
+### Changed
+- Replaced whole-view movement with a short fade when navigating to and from Settings.
+- Added a lightweight Add dialog entrance and smooth task-details expansion.
+- Restored the colored hover sweep on task actions without moving the buttons.
+- Softened the selected task-filter outline and organized task details into compact, readable columns.
+- Displayed action feedback as a floating notice so the task table stays in place.
+
 ## [0.1.3] - 2026-09-28
 
 ### Changed
@@ -14,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refined default blue palettes, softer dark surfaces, and quieter task toolbar styling; custom palettes are preserved.
 - Fixed the Edge action popup height so its content cannot collapse to the header.
 
-## [Unreleased]
+## [0.1.2] - 2026-09-27
 
 ### Added
 - Project scaffold with WXT, Preact, TypeScript, CSS Modules

@@ -1,6 +1,6 @@
 {
   "name": "synology-download-station-by-r22e",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Fast, lightweight, open-source browser client for Synology Download Station",
   "private": true,
   "type": "module",

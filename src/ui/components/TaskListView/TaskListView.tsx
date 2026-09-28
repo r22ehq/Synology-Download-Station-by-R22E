@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { DownloadTask, TaskStatus } from '../../../core/synology/download-station/types';
 import { Button } from '../Button/Button';
-import { ArrowDown, ArrowUp, BrushCleaning, ChevronDown, ChevronRight, FolderOpen, Pause, Play, Plus, Trash2 } from 'lucide-preact';
+import { ArrowDown, ArrowUp, BrushCleaning, ChevronRight, FolderOpen, Pause, Play, Plus, Trash2 } from 'lucide-preact';
 import { formatBytes, formatProgress, formatSpeed } from '../../utils/format';
 import { useSlidingIndicator } from '../../hooks/useSlidingIndicator';
 import styles from './TaskListView.module.css';
@@ -46,7 +46,6 @@ export const TaskListView = ({ tasks, search, onAction, onOpenFolder, onAdd, bus
     return matchesFilter(task.status, filter);
   }), [tasks, filter, search]);
 
-  const selectedTask = tasks.find(task => task.id === detailId) || null;
   const allVisibleSelected = filteredTasks.length > 0 && filteredTasks.every(task => selectedIds.has(task.id));
   const completedIds = tasks.filter(task => task.status === 'finished').map(task => task.id);
 
@@ -70,7 +69,7 @@ export const TaskListView = ({ tasks, search, onAction, onOpenFolder, onAdd, bus
       <nav ref={filtersRef} className={styles.filters} aria-label="Task filters" role="tablist">
         <span className={styles.filterIndicator} style={indicatorStyle} aria-hidden="true" data-testid="task-filter-indicator" />
         {(Object.keys(counts) as Filter[]).map(item => (
-          <button key={item} role="tab" aria-label={`${item}, ${counts[item]} tasks`} aria-selected={filter === item} data-selected={filter === item} className={filter === item ? styles.filterActive : ''} onClick={() => setFilter(item)}>
+          <button key={item} role="tab" aria-label={`${item}, ${counts[item]} ${counts[item] === 1 ? 'task' : 'tasks'}`} aria-selected={filter === item} data-selected={filter === item} className={filter === item ? styles.filterActive : ''} onClick={() => setFilter(item)}>
             {item}<span>{counts[item]}</span>
           </button>
         ))}
@@ -113,8 +112,8 @@ export const TaskListView = ({ tasks, search, onAction, onOpenFolder, onAdd, bus
               <div key={task.id} className={`${styles.taskGroup} ${isSelected ? styles.selected : ''}`}>
                 <div className={styles.row}>
                   <input type="checkbox" className={styles.checkButton} checked={isSelected} onChange={() => toggleSelected(task.id)} aria-label={`${isSelected ? 'Deselect' : 'Select'} ${task.title}`} title={isSelected ? 'Deselect task' : 'Select task'} />
-                  <button className={styles.nameCell} onClick={() => setDetailId(isExpanded ? null : task.id)} title={`${isExpanded ? 'Hide' : 'Show'} task details: ${task.title}`}>
-                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <button className={styles.nameCell} onClick={() => setDetailId(isExpanded ? null : task.id)} aria-expanded={isExpanded} aria-controls={`task-details-${task.id}`} title={`${isExpanded ? 'Hide' : 'Show'} task details: ${task.title}`}>
+                    <span className={styles.detailChevron}><ChevronRight size={18} strokeWidth={2.4} aria-hidden="true" /></span>
                     <span>{task.title}</span>
                   </button>
                   <div className={styles.progressCell}>
@@ -135,13 +134,13 @@ export const TaskListView = ({ tasks, search, onAction, onOpenFolder, onAdd, bus
                   </div>
                 </div>
 
-                {isExpanded && selectedTask && (
-                  <div className={styles.details}>
-                    <section><h3>General</h3><dl><div><dt>Type</dt><dd>{selectedTask.type}</dd></div><div><dt>Destination</dt><dd>{selectedTask.additional?.detail?.destination || '—'}</dd></div><div><dt>Owner</dt><dd>{selectedTask.username || '—'}</dd></div></dl></section>
+                <div id={`task-details-${task.id}`} className={`${styles.details} ${isExpanded ? styles.detailsOpen : ''}`} aria-hidden={!isExpanded} inert={!isExpanded}>
+                  <div className={styles.detailsInner}><div className={styles.detailContent}>
+                    <section><h3>General</h3><dl><div><dt>Type</dt><dd title={task.type}>{task.type}</dd></div><div><dt>Destination</dt><dd title={task.additional?.detail?.destination || undefined}>{task.additional?.detail?.destination || '—'}</dd></div><div><dt>Owner</dt><dd title={task.username || undefined}>{task.username || '—'}</dd></div></dl></section>
                     <section><h3>Transfer</h3><dl><div><dt>Downloaded</dt><dd>{formatBytes(transfer?.size_downloaded || 0)}</dd></div><div><dt>Uploaded</dt><dd>{formatBytes(transfer?.size_uploaded || 0)}</dd></div><div><dt>Download speed</dt><dd>{formatSpeed(transfer?.speed_download || 0)}</dd></div></dl></section>
-                    {selectedTask.additional?.file?.length ? <section className={styles.files}><h3>Files</h3>{selectedTask.additional.file.map(file => <div key={file.filename}><span>{file.filename}</span><span>{formatBytes(file.size)}</span></div>)}</section> : null}
-                  </div>
-                )}
+                    {task.additional?.file?.length && isExpanded ? <section className={styles.files}><h3>Files</h3>{task.additional.file.map(file => <div key={file.filename}><span>{file.filename}</span><span>{formatBytes(file.size)}</span></div>)}</section> : null}
+                  </div></div>
+                </div>
               </div>
             );
           })}
