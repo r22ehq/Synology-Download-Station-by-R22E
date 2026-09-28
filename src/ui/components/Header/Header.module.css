@@ -27,6 +27,7 @@
 .speeds svg { flex: 0 0 auto; stroke-width: 2; }
 .actions { gap: 2px; }
 .actions button { min-width: 28px; min-height: 28px; padding: 4px 6px; }
+.actions button[aria-expanded='true'] { color: var(--color-accent); background: var(--color-selected); }
 .menuWrap { position: relative; }
 .menu { position: absolute; z-index: var(--z-dropdown); inset-inline-end: 0; top: calc(100% + 6px); min-width: 205px; padding: 4px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-1); box-shadow: var(--shadow-lg); }
 .menu button { width: 100%; display: flex; gap: var(--space-2); align-items: center; padding: 8px 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-primary); cursor: pointer; text-align: start; }

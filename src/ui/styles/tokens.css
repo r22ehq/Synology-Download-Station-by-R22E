@@ -15,8 +15,8 @@
 
   /* Border radius */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
   --radius-full: 9999px;
 
   /* Typography */
@@ -249,6 +249,7 @@
 [data-theme='light'],
 [data-theme='system'] {
   --color-accent: var(--theme-light-accent, #2563eb);
+  --color-accent-solid: var(--color-accent);
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 84%, #000000);
   --color-accent-subtle: color-mix(in srgb, var(--color-accent) 10%, transparent);
   --color-primary: var(--color-accent);
@@ -279,14 +280,15 @@
 
 [data-theme='dark'] {
   --color-accent: var(--theme-dark-accent, #4c8bf5);
+  --color-accent-solid: color-mix(in srgb, var(--color-accent) 84%, #000000);
   --color-accent-hover: color-mix(in srgb, var(--color-accent) 84%, #ffffff);
   --color-accent-subtle: color-mix(in srgb, var(--color-accent) 14%, transparent);
   --color-primary: var(--color-accent);
   --color-app-bg: var(--theme-dark-background, #111318);
   --color-background: var(--color-app-bg);
   --color-surface-1: var(--theme-dark-surface, #1a1d23);
-  --color-surface-2: color-mix(in srgb, var(--color-surface-1) 88%, #ffffff);
-  --color-surface-3: color-mix(in srgb, var(--color-surface-1) 80%, #ffffff);
+  --color-surface-2: color-mix(in srgb, var(--color-surface-1) 96%, #ffffff);
+  --color-surface-3: color-mix(in srgb, var(--color-surface-1) 92%, #ffffff);
   --color-surface-hover: color-mix(in srgb, var(--color-surface-1) 84%, var(--color-accent));
   --color-bg-primary: var(--color-surface-1);
   --color-bg-secondary: var(--color-surface-2);
@@ -310,14 +312,15 @@
 @media (prefers-color-scheme: dark) {
   [data-theme='system'] {
     --color-accent: var(--theme-dark-accent, #4c8bf5);
+    --color-accent-solid: color-mix(in srgb, var(--color-accent) 84%, #000000);
     --color-accent-hover: color-mix(in srgb, var(--color-accent) 84%, #ffffff);
     --color-accent-subtle: color-mix(in srgb, var(--color-accent) 14%, transparent);
     --color-primary: var(--color-accent);
     --color-app-bg: var(--theme-dark-background, #111318);
     --color-background: var(--color-app-bg);
     --color-surface-1: var(--theme-dark-surface, #1a1d23);
-    --color-surface-2: color-mix(in srgb, var(--color-surface-1) 88%, #ffffff);
-    --color-surface-3: color-mix(in srgb, var(--color-surface-1) 80%, #ffffff);
+    --color-surface-2: color-mix(in srgb, var(--color-surface-1) 96%, #ffffff);
+    --color-surface-3: color-mix(in srgb, var(--color-surface-1) 92%, #ffffff);
     --color-surface-hover: color-mix(in srgb, var(--color-surface-1) 84%, var(--color-accent));
     --color-bg-primary: var(--color-surface-1);
     --color-bg-secondary: var(--color-surface-2);

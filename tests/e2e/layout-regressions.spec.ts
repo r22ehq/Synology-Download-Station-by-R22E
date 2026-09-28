@@ -16,6 +16,11 @@ test('keeps transfer columns readable and Appearance aligned with app mode', asy
   await expect(page).toHaveTitle('R22E Station');
   await expect(page.locator('#app')).toBeVisible();
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  // Edge sizes an action popup from its document; the shell cannot depend on
+  // the viewport height or the popup can shrink to only its header.
+  await page.setViewportSize({ width: 580, height: 100 });
+  expect(await page.locator('[class*="surface_popup"]').evaluate(element => element.getBoundingClientRect().height)).toBe(580);
+  await page.setViewportSize({ width: 580, height: 640 });
   await page.getByText('Add NAS').click();
   await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
   await page.getByLabel(/Username/i).fill('admin');

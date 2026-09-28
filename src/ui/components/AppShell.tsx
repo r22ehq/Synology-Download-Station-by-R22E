@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { Plus, X } from 'lucide-preact';
+import { Plus, Search, X } from 'lucide-preact';
 import type { DownloadTask } from '@/core/synology/download-station/types';
 import { sendMessage } from '@/core/platform/messaging/message-contracts';
 import { taskSnapshotStorage } from '@/core/platform/storage/storage-items';
@@ -32,6 +32,7 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
   const [stats, setStats] = useState({ speedDownload: 0, speedUpload: 0 });
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const searchInput = useRef<HTMLInputElement>(null);
   const [quickUrl, setQuickUrl] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -45,11 +46,30 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
   const [addOpen, setAddOpen] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success' | 'info'; text: string } | null>(null);
   const [addError, setAddError] = useState('');
+  const previousView = useRef(initialView);
+  const [animatedView, setAnimatedView] = useState<AppView | null>(null);
+
+  useEffect(() => {
+    if (!searchOpen || currentView.value !== 'main') return;
+    const frame = window.requestAnimationFrame(() => searchInput.current?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [searchOpen, currentView.value]);
+
+  const closeSearch = () => {
+    setSearch('');
+    setSearchOpen(false);
+    document.getElementById('task-search-toggle')?.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     navigateTo(initialView);
     initAppState().catch(error => setMessage({ tone: 'error', text: toErrorMessage(error) }));
   }, [initialView]);
+
+  useEffect(() => {
+    if (previousView.current !== currentView.value) setAnimatedView(currentView.value);
+    previousView.current = currentView.value;
+  }, [currentView.value]);
 
   useEffect(() => {
     const port = browser.runtime.connect({ name: 'r22e-live-state' });
@@ -254,9 +274,8 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
     </section>
   ) : (
     <>
-      <div className={`${styles.searchBar} ${searchOpen ? styles.searchOpen : ''}`} inert={!searchOpen} aria-hidden={!searchOpen}>
-        <Input aria-label="Search downloads" value={search} onInput={event => setSearch(event.currentTarget.value)} placeholder="Search downloads…" />
-        <Button variant="ghost" size="sm" className={styles.searchClose} onClick={() => { setSearch(''); setSearchOpen(false); }} title="Close search" aria-label="Close search"><X size={17} /></Button>
+      <div id="task-search" className={`${styles.searchBar} ${searchOpen ? styles.searchOpen : ''}`} inert={!searchOpen} aria-hidden={!searchOpen}>
+        <Input inputRef={searchInput} aria-label="Search downloads" icon={<Search size={14} aria-hidden="true" />} value={search} onInput={event => setSearch(event.currentTarget.value)} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); closeSearch(); } }} placeholder="Search downloads…" endAdornment={<Button variant="ghost" size="sm" className={styles.searchClose} onClick={closeSearch} title="Close search (Esc)" aria-label="Close search"><X size={14} /></Button>} />
       </div>
       <div className={styles.quickAdd}>
         <Input aria-label="Quick-add URL or magnet link" value={quickUrl} onInput={event => setQuickUrl(event.currentTarget.value)} placeholder="Paste URL or magnet link…" onKeyDown={event => event.key === 'Enter' && (quickUrl.trim() ? createTasks({ urls: [quickUrl.trim()] }) : (setAddError(''), setAddOpen(true)))} />
@@ -268,9 +287,9 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
 
   return (
     <div className={`${styles.shell} ${styles[`surface_${surface}`]}`}>
-      <Header authStatus={authStatus} stats={stats} onRefresh={refresh} onToggleSearch={() => setSearchOpen(value => !value)} onLogout={logout} refreshState={refreshState} />
+      <Header authStatus={authStatus} stats={stats} onRefresh={refresh} onToggleSearch={() => setSearchOpen(value => !value)} searchOpen={searchOpen} onLogout={logout} refreshState={refreshState} />
       {message && <div className={`${styles.notice} ${styles[message.tone]}`} role="status"><span>{message.text}</span><button onClick={() => setMessage(null)} aria-label="Dismiss message">×</button></div>}
-      <main className={styles.main}>{currentView.value === 'main' ? mainContent : <SettingsView />}</main>
+      <main key={currentView.value} className={`${styles.main} ${currentView.value === 'settings' ? styles.settingsMain : ''} ${animatedView === currentView.value ? (currentView.value === 'main' ? styles.viewBack : styles.viewForward) : ''}`}>{currentView.value === 'main' ? mainContent : <SettingsView />}</main>
       {addOpen && <AddTaskModal onClose={() => setAddOpen(false)} onSubmit={createTasks} isLoading={isBusy} error={addError} />}
     </div>
   );

@@ -234,8 +234,8 @@ export function SettingsView() {
   }[section];
 
   return <div className={styles.settingsLayout}>
-    <nav className={styles.sidebar} aria-label="Settings sections">{sections.map(item => { const Icon = item.icon; return <button className={section === item.id ? styles.navActive : ''} aria-current={section === item.id ? 'page' : undefined} onClick={() => { setSection(item.id); if (item.id === 'about' || item.id === 'connection') settingsSection.value = item.id; }} key={item.id}><Icon size={16} /><span>{item.label}</span></button>; })}</nav>
-    <section className={styles.content}>{content}</section>
+    <nav className={styles.sidebar} aria-label="Settings sections">{sections.map(item => { const Icon = item.icon; return <button className={section === item.id ? styles.navActive : ''} aria-current={section === item.id ? 'page' : undefined} aria-label={item.label} title={item.label} onClick={() => { setSection(item.id); if (item.id === 'about' || item.id === 'connection') settingsSection.value = item.id; }} key={item.id}><Icon size={16} /><span>{item.label}</span></button>; })}</nav>
+    <section key={section} className={styles.content} aria-label={`${sections.find(item => item.id === section)?.label} settings`} tabIndex={0}>{content}</section>
   </div>;
 }
 

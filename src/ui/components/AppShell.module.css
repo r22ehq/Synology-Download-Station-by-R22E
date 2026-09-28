@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: column;
   width: 580px;
-  min-height: 520px;
-  height: min(720px, 100vh);
+  min-height: 0;
+  height: 100dvh;
   overflow: hidden;
   color: var(--color-text-primary);
   background: var(--color-app-bg);
@@ -12,22 +12,29 @@
 .surface_sidepanel,
 .surface_options {
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
 }
 
 .surface_popup {
   width: 580px;
+  /* Extension popup viewports size themselves from document content. A
+     viewport-relative height here can collapse the popup to its header. */
+  height: 580px;
 }
 
 .surface_options {
   max-width: 1180px;
-  min-height: 720px;
   margin: 0 auto;
   border-inline: 1px solid var(--color-border);
 }
 
 .main { min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
 .main::-webkit-scrollbar { display: none; }
+.settingsMain { overflow: hidden; display: flex; flex-direction: column; }
+.viewForward { animation: enterSettings 220ms cubic-bezier(.2,.8,.2,1) both; }
+.viewBack { animation: returnToTasks 180ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes enterSettings { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes returnToTasks { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
 
 .notice {
   display: flex;
@@ -55,17 +62,18 @@
   background: var(--color-surface-1);
 }
 
-.searchBar { grid-template-columns: minmax(0, 1fr) auto; max-height: 0; padding-block: 0; opacity: 0; overflow: hidden; visibility: hidden; border-bottom-color: transparent; transform: translateY(-6px); transition: max-height 260ms cubic-bezier(.2,.8,.2,1), padding 260ms cubic-bezier(.2,.8,.2,1), opacity 200ms ease, transform 260ms cubic-bezier(.2,.8,.2,1), visibility 260ms; }
-.searchOpen { max-height: 72px; padding-block: 8px; opacity: 1; visibility: visible; border-bottom-color: var(--color-border); transform: translateY(0); }
-.searchBar input { min-height: 38px; border-radius: 14px; }
-.searchClose { width: 38px; height: 38px; padding: 0; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-text-secondary); background: var(--color-surface-2); transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease, transform 180ms ease; }
-.searchClose:hover:not(:disabled) { color: var(--color-text-primary); border-color: var(--color-border-strong); background: var(--color-surface-hover); transform: scale(1.04); }
-.quickAdd { grid-template-columns: minmax(0, 1fr) auto; padding-block: 8px; }
-.quickAdd input { min-height: 40px; border-radius: 14px; padding-inline: 14px; }
-.quickAdd button { min-height: 40px; border-radius: 13px; }
+.searchBar { grid-template-columns: minmax(0, 1fr); max-height: 0; padding-block: 0; opacity: 0; overflow: hidden; visibility: hidden; border-bottom-color: transparent; transform: translateY(-4px); transition: max-height 220ms cubic-bezier(.2,.8,.2,1), padding 220ms cubic-bezier(.2,.8,.2,1), opacity 160ms ease, transform 220ms cubic-bezier(.2,.8,.2,1), visibility 220ms; }
+.searchOpen { max-height: 50px; padding-block: 7px; opacity: 1; visibility: visible; border-bottom-color: var(--color-border); transform: translateY(0); }
+.searchBar input { height: 32px; min-height: 32px; border-radius: 9px; }
+.searchBar .searchClose { width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; border-radius: 6px; color: var(--color-text-muted); background: transparent; transition: color 140ms ease, background-color 140ms ease; }
+.searchBar .searchClose:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-bg-hover); }
+.quickAdd { grid-template-columns: minmax(0, 1fr) auto; padding-block: 8px; gap: 8px; }
+.quickAdd input { height: 34px; min-height: 34px; border-radius: 10px; padding-inline: 11px; }
+.quickAdd button { height: 34px; min-height: 34px; padding: 0 14px; gap: 6px; border-radius: 10px; font-size: var(--font-size-md); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .searchBar, .searchClose { transition: none; } }
 .searchBar > div,
 .quickAdd > div { min-width: 0; }
+@media (max-width: 500px) { .searchBar, .quickAdd { padding-inline: 12px; } }
 
 .emptyState,
 .loginCard {

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-09-28
+
+### Changed
+- Compact URL and Add controls, with an inline search close button and keyboard focus restoration.
+- Subtle input focus rings and short, reduced-motion-aware Settings transitions.
+- Independent Settings content scrolling with stable navigation in popup, side panel, and options views.
+- Refined default blue palettes, softer dark surfaces, and quieter task toolbar styling; custom palettes are preserved.
+- Fixed the Edge action popup height so its content cannot collapse to the header.
+
 ## [Unreleased]
 
 ### Added

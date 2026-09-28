@@ -1,17 +1,17 @@
-.settingsLayout { display: grid; grid-template-columns: 148px minmax(0, 1fr); min-height: 100%; }
-.sidebar { padding: 8px; border-inline-end: 1px solid var(--color-border); background: var(--color-surface-1); }
+.settingsLayout { display: grid; grid-template-columns: 148px minmax(0, 1fr); flex: 1; height: 100%; min-height: 0; overflow: hidden; }
+.sidebar { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border-inline-end: 1px solid var(--color-border); background: var(--color-surface-1); }
 .sidebar button { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 7px; margin-bottom: 2px; padding: 7px 8px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-text-secondary); cursor: pointer; text-align: start; font-size: var(--font-size-sm); font-weight: 600; }
 .sidebar button:hover:not(.navActive) { color: var(--color-text-primary); background: color-mix(in srgb, var(--color-text-primary) 7%, transparent); }
 .sidebar .navActive { color: var(--color-primary); background: var(--color-selected); }
 .content,
 .addPage { padding: 20px; }
-.content { min-width: 0; }
+.content { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .pageHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); margin-bottom: 18px; }
 .pageHeading h2 { margin: 0 0 5px; font-size: 22px; }
 .pageHeading p { margin: 0; color: var(--color-text-secondary); line-height: 1.45; }
 .profileList { display: flex; flex-direction: column; gap: 9px; }
 .profileCard { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-1); }
-.activeProfile { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-focus-ring); }
+.activeProfile { border-color: color-mix(in srgb, var(--color-primary) 65%, var(--color-border)); background: color-mix(in srgb, var(--color-surface-1) 96%, var(--color-primary)); }
 .profileSelect { display: flex; align-items: center; gap: 11px; min-width: 0; padding: 0; border: 0; color: var(--color-text-primary); background: transparent; cursor: pointer; text-align: start; }
 .profileSelect > span:last-child { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
 .profileSelect small { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

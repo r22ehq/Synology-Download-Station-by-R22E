@@ -14,11 +14,12 @@ export interface HeaderProps {
   stats?: { speedDownload: number; speedUpload: number };
   onRefresh?: () => void;
   onToggleSearch?: () => void;
+  searchOpen?: boolean;
   onLogout?: () => void;
   refreshState?: 'idle' | 'refreshing' | 'done';
 }
 
-export function Header({ authStatus, stats, onRefresh, onToggleSearch, onLogout, refreshState = 'idle' }: HeaderProps) {
+export function Header({ authStatus, stats, onRefresh, onToggleSearch, searchOpen = false, onLogout, refreshState = 'idle' }: HeaderProps) {
   const isMain = currentView.value === 'main';
   const [menuOpen, setMenuOpen] = useState(false);
   const connected = authStatus === 'authenticated';
@@ -63,7 +64,7 @@ export function Header({ authStatus, stats, onRefresh, onToggleSearch, onLogout,
       <div className={styles.actions}>
         {isMain && (
           <>
-            <Button variant="ghost" size="sm" onClick={onToggleSearch} title="Search tasks" aria-label="Search tasks"><Search size={17} /></Button>
+            <Button id="task-search-toggle" variant="ghost" size="sm" onClick={onToggleSearch} title="Search tasks" aria-label="Search tasks" aria-expanded={searchOpen} aria-controls="task-search"><Search size={17} /></Button>
             <Button
               variant="ghost"
               size="sm"

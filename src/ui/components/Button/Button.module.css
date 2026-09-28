@@ -7,7 +7,7 @@
   cursor: pointer;
   font-family: inherit;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
   border-radius: var(--radius-md, 4px);
   white-space: nowrap;
 }
@@ -18,7 +18,7 @@
 }
 
 .primary {
-  background-color: var(--color-accent, #2563eb);
+  background-color: var(--color-accent-solid, var(--color-accent));
   color: #ffffff;
 }
 
@@ -56,12 +56,12 @@
 
 .sm {
   padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
 }
 
 .md {
   padding: 0.5rem 1rem;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
 }
 
 .lg {

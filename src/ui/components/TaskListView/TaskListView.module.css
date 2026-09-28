@@ -7,7 +7,7 @@
 .filters button span { min-width: 20px; padding: 1px 6px; border-radius: var(--radius-full); background: var(--color-surface-3); color: var(--color-text-muted); font-size: 10px; text-align: center; }
 .filters .filterActive { color: var(--color-accent); }
 .filters .filterActive span { background: var(--color-accent); color: white; }
-.toolbar { display: flex; align-items: center; gap: 3px; padding: 8px var(--space-4); background: var(--color-surface-2); border-bottom: 1px solid var(--color-border); overflow-x: auto; }
+.toolbar { display: flex; align-items: center; gap: 3px; padding: 6px var(--space-4); background: var(--color-surface-1); border-bottom: 1px solid var(--color-border); overflow-x: auto; }
 .toolbarSpacer { flex: 1; }
 .actionButton { --action-fill: transparent; --action-ink: var(--color-text-inverse); background-image: linear-gradient(var(--action-fill), var(--action-fill)); background-repeat: no-repeat; background-position: left center; background-size: 0 100%; transition: background-size 230ms cubic-bezier(.2,.8,.2,1), color 180ms ease, transform 180ms ease; }
 .actionResume { --action-fill: color-mix(in srgb, var(--color-success) 85%, #000); }
@@ -33,7 +33,7 @@
 .table { min-height: 0; margin: var(--space-3); display: flex; flex: 1; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-1); box-shadow: var(--shadow-sm); }
 .tableHeader,
 .row { display: grid; grid-template-columns: 28px minmax(170px, 2fr) minmax(100px, .9fr) minmax(110px, .85fr) 76px 92px 68px; align-items: center; column-gap: 10px; }
-.tableHeader { min-height: 36px; padding: 0 10px; color: var(--color-text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); border-bottom: 1px solid var(--color-border); background: var(--color-surface-2); }
+.tableHeader { min-height: 32px; padding: 0 10px; color: var(--color-text-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface-1) 96%, var(--color-text-primary)); }
 .rows { min-height: 0; overflow: auto; }
 .taskGroup { border-bottom: 1px solid var(--color-divider); }
 .taskGroup:last-child { border-bottom: 0; }

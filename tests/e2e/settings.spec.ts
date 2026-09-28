@@ -129,6 +129,10 @@ test.describe('Settings and Theming', () => {
 
     const connectionNav = page.getByRole('button', { name: 'Connection' });
     const settingsMain = page.locator('main');
+    // Measure the settled page, after the user-requested entrance animation.
+    await settingsMain.evaluate(async element => {
+      await Promise.all(element.getAnimations().map(animation => animation.finished));
+    });
     const beforeNav = await connectionNav.boundingBox();
     const beforeMain = await settingsMain.boundingBox();
 
@@ -142,6 +146,12 @@ test.describe('Settings and Theming', () => {
     expect(afterNav?.width).toBe(beforeNav?.width);
     expect(afterMain?.x).toBe(beforeMain?.x);
     expect(afterMain?.width).toBe(beforeMain?.width);
+    const content = page.getByRole('region', { name: 'Appearance settings' });
+    await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    expect(await content.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    expect((await connectionNav.boundingBox())?.y).toBe(afterNav?.y);
+    expect(await settingsMain.evaluate(element => element.scrollTop)).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollTop)).toBe(0);
   });
 
   test('can export settings', async ({ page, gotoPopup }) => {
