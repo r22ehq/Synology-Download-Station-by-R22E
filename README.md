@@ -6,7 +6,9 @@
 
 [Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
-> **Chrome Web Store:** the listing is not published yet. The [product page](https://r22e.com/plugins/r22e-station) will link to the official listing as soon as it is live. Until then, use the versioned packages on [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases).
+[![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
+
+Chrome is available in the Chrome Web Store. Other browser listings are awaiting approval. Store versions may lag behind [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases); check the version shown before installing.
 
 ## What it does
 
@@ -15,6 +17,8 @@
 - Send a selected link from the right-click menu, or collect candidate links from the current page on demand.
 - Keep a side panel open while browsing, with responsive controls down to narrow widths.
 - Choose light, dark, or system appearance and optional completion notifications.
+- Set a destination folder per NAS or follow the Download Station default.
+- Manage upload and download speed limits and preview completion sounds.
 - Connect directly to a local NAS or custom address. Experimental QuickConnect-ID discovery supports direct routes only, not relay.
 
 The extension requires your own compatible Synology NAS, Download Station, and a user account. It has no R22E cloud account, analytics, or telemetry service.
@@ -33,16 +37,16 @@ The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progr
 
 ## Browser support
 
-| Browser | Status | Package |
+| Browser | Availability and testing | Install / package |
 | --- | --- | --- |
-| Google Chrome | Tested with Chromium | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
-| Microsoft Edge | Chromium build; manual browser QA recommended | [Edge builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
-| Mozilla Firefox | Build available; manual execution pending | [Firefox builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
-| Opera | Chromium build; manual browser QA recommended | [Opera builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
+| Google Chrome | Store listing available; automated UI checks passed in Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp) · [Chrome ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Microsoft Edge | Store review pending; connection-flow checks passed in Edge | [Edge ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Mozilla Firefox | Store review pending; v0.1.5 login tested manually, latest session fix needs native verification | [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Opera | Store review pending; latest session fix needs native verification | [Opera ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
-| Safari | Planned | — |
+| Safari | Not available | — |
 
-The links above point to browser-specific packages on the releases page. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
+The Chrome Web Store link installs the currently approved Chrome version. ZIP links open the latest GitHub release: choose the asset named for your browser. GitHub releases and store approvals are separate. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
 
 ## Getting connected
 
