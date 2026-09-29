@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { test, expect } from './fixtures/extension';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 const auditDir = path.resolve('output/playwright/ui-audit');
 
@@ -27,22 +28,13 @@ test.describe('Current UI visual audit', () => {
 
     await page.setViewportSize({ width: 720, height: 760 });
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible({ timeout: 10_000 });
+    await addMockNasAndConnect(page, mockNas);
     await page.setViewportSize({ width: 580, height: 720 });
-    await page.screenshot({ path: path.join(auditDir, '00-login-required.png'), fullPage: true });
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
     await expect(page.getByText('Ubuntu 24.04 LTS.iso')).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: path.join(auditDir, '01-popup-light.png'), fullPage: true });
 
     await page.getByRole('button', { name: 'Ubuntu 24.04 LTS.iso', exact: true }).click();
-    await expect(page.getByText('Download speed')).toBeVisible();
+    await expect(page.locator('#task-details-ubuntu').getByText('Download speed')).toBeVisible();
     await page.screenshot({ path: path.join(auditDir, '02-task-details.png'), fullPage: true });
 
     await expect(page.getByRole('button', { name: 'Add task' })).toHaveCount(0);

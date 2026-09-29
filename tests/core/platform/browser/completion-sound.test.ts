@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { settings, createDocument, getContexts, sendMessage } = vi.hoisted(() => ({
-  settings: { completionSoundEnabled: true, completionSound: 'soft' },
-  createDocument: vi.fn().mockResolvedValue(undefined),
-  getContexts: vi.fn().mockResolvedValue([]),
-  sendMessage: vi.fn().mockResolvedValue({ played: true }),
-}));
+const { settings, createDocument, getContexts, sendMessage, offscreen } = vi.hoisted(() => {
+  const createDocument = vi.fn().mockResolvedValue(undefined);
+  return {
+    settings: { completionSoundEnabled: true, completionSound: 'soft' },
+    createDocument,
+    offscreen: { createDocument } as { createDocument: typeof createDocument | undefined },
+    getContexts: vi.fn().mockResolvedValue([]),
+    sendMessage: vi.fn().mockResolvedValue({ played: true }),
+  };
+});
 
 vi.mock('wxt/browser', () => ({
   browser: {
-    offscreen: { createDocument },
+    offscreen,
     runtime: {
       getURL: (path: string) => `chrome-extension://example${path}`,
       getContexts,
@@ -26,6 +30,8 @@ import { completionSound } from '../../../../src/core/platform/browser/completio
 describe('completionSound', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
+    offscreen.createDocument = createDocument;
     settings.completionSoundEnabled = true;
     settings.completionSound = 'soft';
     getContexts.mockResolvedValue([]);
@@ -50,5 +56,29 @@ describe('completionSound', () => {
     await completionSound.play();
     expect(createDocument).not.toHaveBeenCalled();
     expect(sendMessage).toHaveBeenCalledOnce();
+  });
+
+  it('plays directly in the Firefox background document without offscreen APIs', async () => {
+    offscreen.createDocument = undefined;
+    const play = vi.fn().mockResolvedValue(undefined);
+    const AudioMock = vi.fn(function () { return { play, volume: 0 }; });
+    vi.stubGlobal('Audio', AudioMock);
+    settings.completionSound = 'glass';
+    await completionSound.play();
+    expect(AudioMock).toHaveBeenCalledWith('chrome-extension://example/completion-glass.wav');
+    expect(play).toHaveBeenCalledOnce();
+    expect(createDocument).not.toHaveBeenCalled();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not fail polling when Firefox blocks audio playback', async () => {
+    offscreen.createDocument = undefined;
+    vi.stubGlobal('Audio', vi.fn(function () {
+      return { play: vi.fn().mockRejectedValue(new Error('Autoplay blocked')), volume: 0 };
+    }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(completionSound.play()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 });

@@ -56,6 +56,10 @@
 
 .withEndAdornment { padding-inline-end: 36px; }
 .endAdornment { position: absolute; inset-inline-end: 4px; display: flex; align-items: center; }
+.passwordToggle { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.passwordToggle:hover:not(:disabled) { color: var(--color-primary); background: var(--color-selected); }
+.passwordToggle:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
+.passwordToggle:disabled { opacity: .5; cursor: default; }
 
 .iconWrapper {
   position: absolute;

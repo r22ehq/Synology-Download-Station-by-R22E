@@ -94,7 +94,15 @@ export interface DownloadStationConfig {
   emule_max_upload: number;
   unzip_service_enabled: boolean;
   default_destination: string;
+  http_max_download?: number;
+  ftp_max_download?: number;
+  nzb_max_download?: number;
 }
+
+export type SpeedLimits = Pick<DownloadStationConfig, 'bt_max_download' | 'bt_max_upload'> & {
+  http_max_download: number;
+  nzb_max_download: number;
+};
 
 export interface DownloadStationStatistic {
   speed_download: number;

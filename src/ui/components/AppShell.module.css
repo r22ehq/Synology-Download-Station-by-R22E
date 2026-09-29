@@ -20,7 +20,7 @@
   width: 580px;
   /* Extension popup viewports size themselves from document content. A
      viewport-relative height here can collapse the popup to its header. */
-  height: 580px;
+  height: 520px;
 }
 
 .surface_options {

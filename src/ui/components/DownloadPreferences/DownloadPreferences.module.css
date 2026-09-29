@@ -1,0 +1,17 @@
+.heading { margin-bottom: 18px; }
+.heading h2 { margin: 0 0 5px; font-size: 22px; }
+.heading p, .hint { margin: 0; color: var(--color-text-secondary); line-height: 1.45; font-size: var(--font-size-sm); }
+.profile { margin-bottom: 12px; color: var(--color-text-secondary); }
+.profile strong { color: var(--color-text-primary); }
+.card { display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-1); }
+.defaultChoice { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.defaultChoice input { margin-top: 3px; accent-color: var(--color-primary); }
+.defaultChoice span { display: flex; flex-direction: column; gap: 4px; }
+.defaultChoice small { color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.selected { margin: 0; font-size: var(--font-size-sm); overflow-wrap: anywhere; }
+.rates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.error, .success { padding: 10px; margin-top: 12px; border-radius: var(--radius-md); font-size: var(--font-size-sm); }
+.error { color: var(--color-error-text); background: var(--color-danger-subtle); }
+.success { color: var(--color-success-text); background: var(--color-success-subtle); }
+@media (max-width: 650px) { .rates { grid-template-columns: 1fr; } }

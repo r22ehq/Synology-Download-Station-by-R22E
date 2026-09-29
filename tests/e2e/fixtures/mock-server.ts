@@ -1,6 +1,6 @@
 import * as http from 'node:http';
 import * as url from 'node:url';
-import type { DownloadTask } from '../../../src/core/synology/download-station/types';
+import type { DownloadTask, DownloadStationConfig } from '../../../src/core/synology/download-station/types';
 import type { ParsedUrlQuery } from 'querystring';
 
 export class MockNasServer {
@@ -12,7 +12,10 @@ export class MockNasServer {
     statistics: Record<string, unknown>;
     requireDeviceToken: boolean;
     validDid: string | null;
+    isManager: boolean;
+    config: DownloadStationConfig;
   };
+  public uploads: Array<{ name: string; bytes: Buffer; destination: string; sid: string }> = [];
   public requestCounts: Record<string, number> = {};
 
   constructor(port: number = 0) {
@@ -23,6 +26,8 @@ export class MockNasServer {
       statistics: { speed_download: 0, speed_upload: 0 },
       requireDeviceToken: false,
       validDid: 'test-valid-did',
+      isManager: true,
+      config: { bt_max_download: 0, bt_max_upload: 20, http_max_download: 0, ftp_max_download: 0, nzb_max_download: 0, default_destination: '/volume1/downloads', emule_enabled: false, emule_max_download: 0, emule_max_upload: 0, unzip_service_enabled: false },
     };
     this.requestCounts = {};
 
@@ -50,15 +55,35 @@ export class MockNasServer {
         this.requestCounts[api] = (this.requestCounts[api] || 0) + 1;
       }
 
-      let body = '';
+      const chunks: Buffer[] = [];
       req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
+        chunks.push(chunk);
       });
       req.on('end', () => {
         const query = parsedUrl.query;
-        const params = new URLSearchParams(body || '');
+        const body = Buffer.concat(chunks);
+        const boundary = req.headers['content-type']?.match(/boundary=(?:"([^"]+)"|([^;]+))/);
+        const params = new URLSearchParams(boundary ? '' : body.toString());
+        let upload: { name: string; bytes: Buffer } | undefined;
+        if (boundary) {
+          for (const part of body.toString('latin1').split(`--${boundary[1] || boundary[2]}`)) {
+            const separator = part.indexOf('\r\n\r\n');
+            if (separator < 0) continue;
+            const header = part.slice(0, separator);
+            const name = header.match(/name="([^"]+)"/)?.[1];
+            const filename = header.match(/filename="([^"]+)"/)?.[1];
+            const value = part.slice(separator + 4).replace(/\r\n$/, '');
+            if (filename) upload = { name: filename, bytes: Buffer.from(value, 'latin1') };
+            else if (name) params.set(name, Buffer.from(value, 'latin1').toString());
+          }
+        }
         const api = query.api || params.get('api') || '';
         const method = query.method || params.get('method') || '';
+        if (!query.api && api) this.requestCounts[String(api)] = (this.requestCounts[String(api)] || 0) + 1;
+        if (upload) {
+          this.uploads.push({ ...upload, destination: String(query.destination || params.get('destination') || ''), sid: String(query._sid || params.get('_sid') || '') });
+          params.set('uploaded_file_name', upload.name);
+        }
 
         res.setHeader('Content-Type', 'application/json');
 
@@ -112,8 +137,11 @@ export class MockNasServer {
       statistics: { speed_download: 0, speed_upload: 0 },
       requireDeviceToken: false,
       validDid: 'test-valid-did',
+      isManager: true,
+      config: { bt_max_download: 0, bt_max_upload: 20, http_max_download: 0, ftp_max_download: 0, nzb_max_download: 0, default_destination: '/volume1/downloads', emule_enabled: false, emule_max_download: 0, emule_max_upload: 0, unzip_service_enabled: false },
     };
     this.requestCounts = {};
+    this.uploads = [];
   }
 
   private handleRequest(
@@ -176,7 +204,18 @@ export class MockNasServer {
       return { success: false, error: { code: 119 } };
 
     if (api === 'SYNO.DownloadStation.Info' && method === 'getinfo') {
-      return { success: true, data: { is_manager: true, version: 2 } };
+      return { success: true, data: { is_manager: this.state.isManager, version: 2 } };
+    }
+
+    if (api === 'SYNO.DownloadStation.Info' && method === 'getconfig') return { success: true, data: this.state.config };
+    if (api === 'SYNO.DownloadStation.Info' && method === 'setserverconfig') {
+      if (!this.state.isManager) return { success: false, error: { code: 105 } };
+      for (const key of ['bt_max_download', 'bt_max_upload', 'http_max_download', 'nzb_max_download'] as const) {
+        const value = postParams.get(key);
+        if (value !== null) this.state.config[key] = Number(value);
+      }
+      this.state.config.ftp_max_download = this.state.config.http_max_download;
+      return { success: true };
     }
 
     if (api === 'SYNO.DownloadStation.Task') {
@@ -189,7 +228,7 @@ export class MockNasServer {
         const newId = `dbid_mock_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
         // Derive title from URI (naive logic for mock)
-        let title = 'mock-task';
+        let title = postParams.get('uploaded_file_name') || 'mock-task';
         if (uri) {
           const match = uri.match(/dn=([^&]+)/);
           if (match && match[1]) {

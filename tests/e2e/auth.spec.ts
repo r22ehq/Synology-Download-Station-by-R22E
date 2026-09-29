@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/extension';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 declare const chrome: {
   storage: {
@@ -26,16 +27,7 @@ test.describe('Authentication flows', () => {
     ];
 
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible();
-
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas);
 
     await expect(page.getByText('Test Download')).toBeVisible({ timeout: 10000 });
   });
@@ -61,28 +53,19 @@ test.describe('Authentication flows', () => {
     ];
 
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible();
-
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas);
 
     // Should show OTP input
-    await expect(page.getByPlaceholder('Verification Code')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Verification code')).toBeVisible({ timeout: 10000 });
 
-    await page.getByPlaceholder('Verification Code').fill('000000');
+    await page.getByLabel('Verification code').fill('000000');
     await page.getByRole('button', { name: /Verify/i }).click();
 
     // Wait for the button to be re-enabled after failure
     await expect(page.getByRole('button', { name: /Verify/i })).toBeEnabled();
 
     // Submit correct OTP
-    await page.getByPlaceholder('Verification Code').fill('123456');
+    await page.getByLabel('Verification code').fill('123456');
     await page.getByRole('button', { name: /Verify/i }).click();
 
     // After successful OTP, should show tasks
@@ -93,19 +76,11 @@ test.describe('Authentication flows', () => {
     mockNas.state.authStatus = 'INVALID_CREDENTIALS';
 
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('wrongpass');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible();
-
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('wrongpass');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas, 'wrongpass');
 
     // Should show error message or keep login form visible
-    await expect(page.getByPlaceholder('Password')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('status')).toContainText('Incorrect username or password.');
   });
 
   test('restores a remembered session and uses an opt-in saved password after restart', async ({ page, context, gotoPopup, mockNas }) => {
@@ -113,17 +88,14 @@ test.describe('Authentication flows', () => {
     mockNas.state.authStatus = 'SUCCESS';
     await gotoPopup(page);
     await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
+    await page.getByRole('button', { name: /Local HTTP Port 5000/ }).click();
+    await page.getByLabel(/^NAS address$/i).fill(mockNas.getUrl());
+    await expect(page.getByLabel('Username', { exact: true })).toBeEnabled();
     await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible();
-
-    await gotoPopup(page);
     await page.getByLabel('Password', { exact: true }).fill('password123');
     await page.getByRole('checkbox', { name: /Remember this device/ }).check();
     await page.getByRole('checkbox', { name: /Save password on this device/ }).check();
-    await page.getByRole('button', { name: 'Login' }).click();
+    await page.getByRole('button', { name: 'Save and connect' }).click();
     await expect(page.getByPlaceholder(/Paste URL/i)).toBeVisible();
 
     // Simulate browser restart's session-storage loss and terminate the MV3 worker.

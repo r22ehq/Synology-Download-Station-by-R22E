@@ -8,9 +8,11 @@ import { SynoCommonErrorCodes } from '../types';
  */
 export class SessionManager {
   private sessions: Map<string, AuthSession> = new Map();
+  private revision = 0;
 
   /** Stores a session for a given profile. */
   setSession(profileId: string, session: AuthSession): void {
+    this.revision++;
     this.sessions.set(profileId, session);
   }
 
@@ -31,6 +33,7 @@ export class SessionManager {
 
   /** Removes a session. */
   clearSession(profileId: string): void {
+    this.revision++;
     this.sessions.delete(profileId);
   }
 
@@ -63,10 +66,20 @@ export class SessionManager {
 
   /** Loads sessions from a serialized record (e.g. from extension storage). */
   loadFromRecord(record: Record<string, AuthSession>): void {
+    this.revision++;
     this.sessions.clear();
     for (const [profileId, session] of Object.entries(record)) {
       this.sessions.set(profileId, session);
     }
+  }
+
+  /** Never let an older storage read overwrite a newer login or logout. */
+  async restoreFromStorage(readRecord: () => Promise<Record<string, AuthSession>>): Promise<boolean> {
+    const revision = this.revision;
+    const record = await readRecord();
+    if (revision !== this.revision) return false;
+    this.loadFromRecord({ ...record, ...this.toRecord() });
+    return true;
   }
 
   /** Exports sessions as a serializable record for persistence. */
@@ -80,6 +93,7 @@ export class SessionManager {
 
   /** Clears all sessions. */
   clearAll(): void {
+    this.revision++;
     this.sessions.clear();
   }
 }

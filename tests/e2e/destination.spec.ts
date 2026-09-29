@@ -1,26 +1,23 @@
 import { test, expect } from './fixtures/extension';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 test.describe('Destination Browser', () => {
   test.beforeEach(async ({ page, gotoPopup, mockNas }) => {
-    await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-  });
-
-  test('can browse and select a NAS destination', async ({ page, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
     await gotoPopup(page);
+    await addMockNasAndConnect(page, mockNas);
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  });
 
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+  test('can browse and select a NAS destination', async ({ page, gotoPopup }) => {
+    await gotoPopup(page);
 
     await page.getByRole('button', { name: 'Open add download form' }).click();
     const dialog = page.getByRole('dialog', { name: 'Add download' });
-    await expect(dialog.getByText('downloads')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Select' }).first().click();
-    await expect(dialog.getByText('/volume1/downloads')).toBeVisible();
+    const destination = dialog.getByRole('button', { name: /^Destination/ });
+    await expect(destination).toHaveAttribute('aria-expanded', 'false');
+    await destination.click();
+    await dialog.getByRole('button', { name: 'Select downloads' }).click();
+    await expect(destination).toContainText('/volume1/downloads');
   });
 });

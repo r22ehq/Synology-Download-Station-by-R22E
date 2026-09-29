@@ -22,7 +22,11 @@ import { DiscoveryClient } from '@/core/synology/api-discovery/discovery-client'
 import { AuthClient } from '@/core/synology/auth/auth-client';
 import { TaskClient } from '@/core/synology/download-station/task-client';
 import { StatisticClient } from '@/core/synology/download-station/statistic-client';
+import { InfoClient } from '@/core/synology/download-station/info-client';
+import { validateSpeedLimits } from '@/core/domain/validation/speed-limits';
 import { getBrowserInfo } from '@/core/platform/browser/browser-adapter';
+import { hostPermissionPattern } from '@/core/platform/browser/host-permission-pattern';
+import { PermissionsManager } from '@/core/platform/browser/permissions';
 import { normalizeNasUrl } from '@/core/domain/connection/nas-url';
 import { TorrentDownloader } from '@/core/domain/torrent-downloader';
 import { FileStationClient } from '@/core/synology/file-station/file-station-client';
@@ -45,23 +49,23 @@ export default defineBackground(() => {
   const authClient = new AuthClient(httpClient);
   const taskClient = new TaskClient(httpClient);
   const statisticClient = new StatisticClient(httpClient);
+  const infoClient = new InfoClient(httpClient);
   const scheduler = new AlarmScheduler();
 
   // Load session state from storage
-  const loadSessions = async () => {
-    // Keep a just-authenticated in-memory SID when a concurrent storage read
-    // finishes before the new session has been persisted.
-    const data = { ...(await sessionDataStorage.getValue()), ...sessionManager.toRecord() };
+  const loadSessions = () => sessionManager.restoreFromStorage(async () => {
+    const data = { ...(await sessionDataStorage.getValue()) };
     const activeProfileId = await activeProfileIdStorage.getValue();
     if (activeProfileId && !data[activeProfileId] && !await getAutoLoginSuppressedStorageItem(activeProfileId).getValue()) {
       const remembered = await getRememberedSessionStorageItem(activeProfileId).getValue();
       if (remembered?.sid) {
         data[activeProfileId] = remembered;
-        await sessionDataStorage.setValue(data);
       }
     }
-    sessionManager.loadFromRecord(data);
-  };
+    // Hydration is read-only: a stale lookup must not persist an old SID over
+    // a concurrent login/logout. The manager applies it only if still current.
+    return data;
+  });
 
   const reconnectInFlight = new Map<string, Promise<boolean>>();
   const reconnectWithSavedPassword = (profileId: string): Promise<boolean> => {
@@ -122,19 +126,16 @@ export default defineBackground(() => {
 
     try {
       if (/^https?:/i.test(url) && /\.torrent(?:$|[?#])/i.test(url)) {
-        const originPattern = new URL(url).origin + '/*';
-        let hasPermission = await browser.permissions.contains({ origins: [originPattern] });
+        const originPattern = hostPermissionPattern(url);
+        const hasPermission = await PermissionsManager.requestHostPermissions([url]);
         if (!hasPermission) {
-          hasPermission = await browser.permissions.request({ origins: [originPattern] });
-          if (!hasPermission) {
-            await browser.windows.create({
-              url: browser.runtime.getURL(`/prompt.html?url=${encodeURIComponent(url)}&origin=${encodeURIComponent(originPattern)}`),
-              type: 'popup',
-              width: 400,
-              height: 300,
-            });
-            return;
-          }
+          await browser.windows.create({
+            url: browser.runtime.getURL(`/prompt.html?url=${encodeURIComponent(url)}&origin=${encodeURIComponent(originPattern)}`),
+            type: 'popup',
+            width: 400,
+            height: 300,
+          });
+          return;
         }
       }
       const create = async () => {
@@ -313,6 +314,10 @@ export default defineBackground(() => {
       await authClient.logout(baseUrl, registry, result.sid);
       return { success: true, diagnostic: 'Connection and authentication successful.' };
     } catch (e: unknown) {
+      const mapped = mapSynologyError(e);
+      if (mapped instanceof InvalidCredentialsError) {
+        return { success: false, authenticationError: true, diagnostic: mapped.message };
+      }
       return { success: false, diagnostic: e instanceof Error ? e.message : 'Unknown error' };
     }
   });
@@ -611,7 +616,7 @@ export default defineBackground(() => {
 
   onMessage('tasks:create', async ({ data }) => {
     const context = await getActiveTaskContext();
-    const destination = data.destination || context.profile.defaultDestination;
+    const destination = data.destination !== undefined ? data.destination || undefined : context.profile.defaultDestination;
     const inputs = [...new Set([...(data.uris || []), ...(data.uri ? [data.uri] : [])].map(value => value.trim()).filter(Boolean))];
     if (data.fileData && inputs.length > 0) throw new Error('Choose either URLs or a task file.');
     if (!data.fileData && inputs.length === 0) throw new Error('Add at least one URL or a task file.');
@@ -667,31 +672,38 @@ export default defineBackground(() => {
   });
 
   onMessage('destinations:list', async ({ data }) => {
-    const activeProfileId = await activeProfileIdStorage.getValue();
-    if (!activeProfileId) throw new Error('No active profile');
-
-    const profile = (await profilesStorage.getValue() || []).find(p => p.id === activeProfileId);
-    if (!profile) throw new Error('Profile not found');
-
-    const sid = sessionManager.getSid(activeProfileId);
-    if (!sid) throw new Error('Not authenticated');
-
-    try {
-      const { baseUrl } = normalizeNasUrl(`${profile.protocol}://${profile.host}:${profile.port}`);
-      const registry = await discoveryClient.discoverApis(baseUrl);
+    const { baseUrl, registry, sid, synoToken } = await getActiveTaskContext();
       const client = new FileStationClient(httpClient);
 
       if (!data.folderPath) {
-        const res = await client.listShares(baseUrl, registry, sid);
+        const res = await client.listShares(baseUrl, registry, sid, { synoToken });
         return { folders: res.shares.map(s => ({ id: s.path, name: s.name, path: s.path })) };
       } else {
-        const res = await client.listFolder(baseUrl, registry, sid, data.folderPath, { filetype: 'dir' });
+        const res = await client.listFolder(baseUrl, registry, sid, data.folderPath, { filetype: 'dir' }, { synoToken });
         return { folders: res.files.map(f => ({ id: f.path, name: f.name, path: f.path })) };
       }
-    } catch (e: unknown) {
-      console.error('[R22E] Failed to list destinations:', e);
-      throw e;
-    }
+  });
+
+  onMessage('nas:preferences', async () => {
+    const context = await getActiveTaskContext();
+    if (!context.registry.isAvailable('SYNO.DownloadStation.Info')) throw new Error('Download Station settings are unavailable on this NAS.');
+    const config = { synoToken: context.synoToken };
+    const [info, preferences] = await Promise.all([
+      infoClient.getInfo(context.baseUrl, context.registry, context.sid, config),
+      infoClient.getConfig(context.baseUrl, context.registry, context.sid, config),
+    ]);
+    return { profileId: context.profileId, isManager: info.is_manager, config: preferences };
+  });
+
+  onMessage('nas:speed', async ({ data }) => {
+    validateSpeedLimits(data.limits);
+    const context = await getActiveTaskContext();
+    if (context.profileId !== data.profileId) throw new Error('The active NAS changed. Reload its settings before saving.');
+    const config = { synoToken: context.synoToken };
+    const info = await infoClient.getInfo(context.baseUrl, context.registry, context.sid, config);
+    if (!info.is_manager) throw new Error('A Download Station administrator account is required to change speed limits.');
+    await infoClient.setConfig(context.baseUrl, context.registry, context.sid, data.limits, config);
+    return { config: await infoClient.getConfig(context.baseUrl, context.registry, context.sid, config) };
   });
 
   console.warn(`[R22E] Background service worker initialized (${browserInfo.name})`);

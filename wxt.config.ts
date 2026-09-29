@@ -8,7 +8,7 @@ export default defineConfig({
   zip: { zipSources: false },
   srcDir: 'src',
   entrypointsDir: '../entrypoints',
-    manifest: ({ browser }) => {
+  manifest: ({ browser }) => {
     const isE2E = process.env.R22E_E2E === '1';
     
     return {
@@ -32,18 +32,25 @@ export default defineConfig({
       },
       permissions: ['storage', 'contextMenus', 'alarms', 'activeTab', 'scripting', ...(browser === 'firefox' ? [] : ['offscreen'])],
       host_permissions: isE2E ? ['*://*/*'] : undefined,
-      optional_permissions: [
-        'notifications',
-        ...(browser === 'firefox' ? ['http://*/*', 'https://*/*'] : []),
-      ],
-      optional_host_permissions: browser === 'firefox' ? undefined : ['http://*/*', 'https://*/*'],
+      optional_permissions: ['notifications'],
+      optional_host_permissions: ['http://*/*', 'https://*/*'],
       ...(browser === 'firefox'
         ? {
+            // Firefox MV3 otherwise silently upgrades an explicitly selected
+            // local HTTP NAS to HTTPS. Keep packaged-only scripts and objects;
+            // HTTPS requests still use normal browser certificate validation.
+            content_security_policy: {
+              extension_pages: "script-src 'self'; object-src 'self';",
+            },
             browser_specific_settings: {
               gecko: {
                 id: 'synology-download-station@r22e',
-                strict_min_version: '109.0',
-                data_collection_permissions: {} // Fix warning
+                strict_min_version: '140.0',
+                // Credentials and selected download links go only to the
+                // user's configured NAS/source, never to an R22E backend.
+                data_collection_permissions: {
+                  required: ['authenticationInfo', 'websiteContent'],
+                },
               },
             },
           }

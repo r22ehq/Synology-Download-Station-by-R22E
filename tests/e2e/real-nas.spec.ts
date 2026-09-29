@@ -83,17 +83,18 @@ test.describe('Real NAS Integration Suite', () => {
     }
   });
 
-  test('end-to-end integration flow safely isolated', async ({ page, gotoPopup }) => {
+  test('end-to-end integration flow safely isolated', async ({ page, gotoPopup, gotoOptions }) => {
     test.setTimeout(90000);
     if (!config) return;
 
     // Product path auth
-    await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(config.nasUrl);
+    await gotoOptions(page);
+    await page.getByRole('button', { name: 'Add NAS' }).click();
+    await page.getByLabel(/^NAS address$/i).fill(config.nasUrl);
     await page.getByLabel(/Username/i).fill(config.username);
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText(config.nasUrl)).toBeVisible();
+    await page.getByPlaceholder('Password').fill(config.password);
+    await page.getByRole('button', { name: 'Save and connect' }).click();
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible();
 
     if (config.destination) {
       await page.evaluate(async (dest) => {
@@ -108,8 +109,6 @@ test.describe('Real NAS Integration Suite', () => {
     }
     
     await gotoPopup(page);
-    await page.getByLabel(/Password/i).fill(config.password);
-    await page.getByRole('button', { name: 'Login' }).click();
     
     // Wait for UI success instead of network SID
     await expect(page.getByText('Disconnected')).toBeHidden({ timeout: 15000 });

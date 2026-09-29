@@ -3,6 +3,7 @@ node_modules/
 
 # Build outputs
 .output/
+release-candidates/firefox/current/
 .wxt/
 dist/
 
@@ -44,3 +45,12 @@ task.md
 walkthrough.md
 implementation_plan.md
 scratch/
+
+# Private workspace guidance and generated QA files
+.codex/
+.playwright-cli/
+AGENTS.md
+**/AGENTS.md
+design-qa.md
+output/
+release-candidates/

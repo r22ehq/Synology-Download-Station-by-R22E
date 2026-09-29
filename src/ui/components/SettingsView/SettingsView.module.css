@@ -43,8 +43,10 @@
 .formCard { display: flex; flex-direction: column; gap: 16px; max-width: 620px; padding: 22px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-1); box-shadow: var(--shadow-md); }
 .connectionMethods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .connectionMethods legend { margin-bottom: 8px; font-size: var(--font-size-sm); font-weight: 600; }
-.connectionMethods label { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-sm); }
-.connectionMethods label:has(input:checked) { border-color: var(--color-primary); background: var(--color-selected); }
+.connectionMethods label { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 10px; border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer; font-size: var(--font-size-sm); }
+.connectionMethods label:hover:not(:has(input:checked)) { background: color-mix(in srgb, var(--color-text-primary) 7%, transparent); }
+.connectionMethods label:has(input:checked) { color: var(--color-primary); background: var(--color-selected); }
+.connectionMethods label:has(input:focus-visible) { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 .connectionMethods input { flex: 0 0 auto; margin: 3px 0 0; accent-color: var(--color-primary); }
 .connectionMethods label span { display: block; min-width: 0; font-weight: 600; }
 .connectionMethods label strong,
@@ -52,7 +54,22 @@
 .connectionMethods label strong { color: var(--color-success-text); }
 .connectionMethods label em { color: var(--color-error-text); }
 .connectionMethods label small { display: block; margin-top: 4px; color: var(--color-text-secondary); font-size: var(--font-size-xs); font-weight: 400; line-height: 1.4; }
+.protocolChoices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.protocolChoices button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 10px 12px; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--color-text-secondary); cursor: pointer; text-align: start; }
+.protocolChoices button:hover:not(.protocolActive) { background: color-mix(in srgb, var(--color-text-primary) 7%, transparent); }
+.protocolChoices button:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+.protocolChoices .protocolActive { color: var(--color-primary); background: var(--color-selected); }
+.protocolChoices strong { font-size: var(--font-size-sm); }
+.protocolChoices small { color: var(--color-text-secondary); font-size: var(--font-size-xs); line-height: 1.35; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 5px; }
+.saveOption { display: flex; align-items: flex-start; gap: 9px; font-size: var(--font-size-sm); cursor: pointer; }
+.saveOption input { flex: 0 0 16px; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--color-primary); }
+.saveOption span { display: flex; flex-direction: column; gap: 3px; }
+.saveOption small { color: var(--color-text-secondary); line-height: 1.4; }
+.connectionHint { margin-top: -8px; color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.45; }
+.connectionHint strong { color: var(--color-text-primary); }
+.certificateLink { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+.certificateLink:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
 .error,
 .success { padding: 10px 12px; border-radius: var(--radius-md); font-size: var(--font-size-sm); }
 .error { color: var(--color-error-text); background: var(--color-danger-subtle); }
@@ -74,6 +91,6 @@
   .addPage { padding: 16px; }
   .settingRow { flex-direction: column; align-items: stretch; gap: 10px; }
   .profileCard { grid-template-columns: minmax(0, 1fr) auto; }
-  .connectionMethods { grid-template-columns: 1fr; }
+  .connectionMethods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .activePill { display: none; }
 }

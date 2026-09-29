@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures/extension';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 declare const chrome: { runtime: {
   getContexts: (options: { contextTypes: string[] }) => Promise<Array<{ contextType: string }>>;
@@ -11,14 +12,7 @@ test.describe('Task Creation', () => {
   test.beforeEach(async ({ page, gotoPopup, mockNas }) => {
     mockNas.state.authStatus = 'SUCCESS';
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-    await expect(page.getByText('Login Required')).toBeVisible({ timeout: 10000 });
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas);
     await expect(page.getByPlaceholder(/Paste URL/i)).toBeVisible({ timeout: 10000 });
   });
 
@@ -133,7 +127,7 @@ test.describe('Task Creation', () => {
     const search = page.getByRole('textbox', { name: 'Search downloads' });
     await expect(search).toBeVisible();
     await expect(page.locator('[class*="searchBar"]')).toHaveCSS('opacity', '1');
-    await expect(page.getByRole('button', { name: 'Close search' })).toHaveAttribute('title', 'Close search');
+    await expect(page.getByRole('button', { name: 'Close search' })).toHaveAttribute('title', 'Close search (Esc)');
     await page.screenshot({ path: path.join(tmpdir(), 'r22e-search-open-580.png') });
     await page.getByRole('button', { name: 'Close search' }).click();
     await expect(search).toBeHidden();
@@ -197,7 +191,7 @@ test.describe('Task Creation', () => {
     ] as const) {
       const button = page.getByRole('button', { name, exact: true });
       await button.hover();
-      await expect(button).toHaveCSS('background-size', '100% 100%');
+      await expect.poll(() => button.evaluate(element => getComputedStyle(element, '::before').transform)).toBe('matrix(1, 0, 0, 1, 0, 0)');
       if (name === 'Pause') {
         await expect(button).toHaveCSS('color', 'rgb(255, 255, 255)');
         await expect(button.locator('svg')).toHaveCSS('fill', 'rgb(255, 255, 255)');
@@ -210,7 +204,7 @@ test.describe('Task Creation', () => {
     await page.getByRole('tab', { name: 'Dark', exact: true }).click();
     await page.getByRole('button', { name: 'Back' }).click();
     await clear.hover();
-    await expect(clear).toHaveCSS('background-size', '100% 100%');
+    await expect.poll(() => clear.evaluate(element => getComputedStyle(element, '::before').transform)).toBe('matrix(1, 0, 0, 1, 0, 0)');
     await page.screenshot({ path: path.join(tmpdir(), 'r22e-clear-action-hover-dark-580.png') });
   });
 });

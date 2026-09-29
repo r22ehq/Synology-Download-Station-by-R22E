@@ -31,8 +31,17 @@ export const completionSound = {
     try {
       const settings = await settingsStorage.getValue();
       if (settings.completionSoundEnabled === false) return;
-      if (!await ensureOffscreen()) return;
       const sound = getCompletionSound(settings.completionSound);
+      // Firefox uses a background document, so audio can play there directly.
+      // Chromium's service worker must continue using its offscreen document.
+      if (!browser.offscreen?.createDocument) {
+        if (typeof Audio === 'undefined') return;
+        const audio = new Audio(browser.runtime.getURL(`/${sound.file}`));
+        audio.volume = 0.75;
+        await audio.play();
+        return;
+      }
+      if (!await ensureOffscreen()) return;
       await browser.runtime.sendMessage({ target: 'completion-sound-offscreen', soundId: sound.id });
     } catch (error) {
       // A blocked or unavailable audio device must not interrupt task polling.

@@ -1,6 +1,7 @@
 import { defineExtensionMessaging } from '@webext-core/messaging';
 
 import type { DownloadTask } from '../../synology/download-station/types';
+import type { DownloadStationConfig, SpeedLimits } from '../../synology/download-station/types';
 export type { DownloadTask };
 
 export interface TaskActionResult {
@@ -51,8 +52,11 @@ interface ProtocolMap {
   'connection:test': (request: { config: NasConnectionConfig }) => {
     success: boolean;
     diagnostic?: string;
+    authenticationError?: boolean;
   };
   'destinations:list': (request: { folderPath?: string }) => { folders: FolderItem[] };
+  'nas:preferences': (request: void) => { profileId: string; isManager: boolean; config: DownloadStationConfig };
+  'nas:speed': (request: { profileId: string; limits: SpeedLimits }) => { config: DownloadStationConfig };
   'stats:get': (request: void) => { speedDownload: number; speedUpload: number };
   'settings:get': (request: void) => Settings;
   'settings:update': (request: Partial<Settings>) => Settings;

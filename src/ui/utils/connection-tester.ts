@@ -3,6 +3,7 @@ import { sendMessage } from '@/core/platform/messaging/message-contracts';
 export interface TestResult {
   success: boolean;
   diagnostic?: string;
+  authenticationError?: boolean;
 }
 
 /**

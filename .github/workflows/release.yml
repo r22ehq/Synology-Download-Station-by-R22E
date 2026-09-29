@@ -36,8 +36,14 @@ jobs:
       - name: Build all browsers
         run: pnpm build:all
 
+      - name: Verify production builds before packaging
+        run: pnpm check:release
+
       - name: Package extensions
         run: pnpm zip:all
+
+      - name: Verify release contents
+        run: pnpm check:release
 
       - name: Generate checksums
         run: |

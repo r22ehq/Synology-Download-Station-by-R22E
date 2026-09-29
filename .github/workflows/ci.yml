@@ -53,6 +53,9 @@ jobs:
       - name: Build for ${{ matrix.browser }}
         run: pnpm build:${{ matrix.browser }}
 
+      - name: Verify release contents
+        run: pnpm check:release --browser ${{ matrix.browser }}
+
       - name: Verify production manifest
         if: matrix.browser == 'chrome'
         run: |
@@ -75,7 +78,7 @@ jobs:
         if: github.event_name == 'push'
         run: pnpm zip:${{ matrix.browser }}
 
-      - name: Upload installable preview
+      - name: Upload package preview
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:

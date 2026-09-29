@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/extension';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 test.describe('Side Panel', () => {
   test.beforeEach(async ({ page, gotoPopup, mockNas }) => {
@@ -18,15 +19,7 @@ test.describe('Side Panel', () => {
     ];
 
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas);
     await expect(page.getByText('SidePanel Task')).toBeVisible({ timeout: 10000 });
   });
 

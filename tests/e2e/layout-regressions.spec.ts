@@ -2,6 +2,53 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test, expect } from './fixtures/extension';
 
+test('draws setup selection controls consistently without changing popup size', async ({ page, gotoPopup }) => {
+  await page.setViewportSize({ width: 580, height: 520 });
+  await gotoPopup(page);
+  await expect(page).toHaveTitle('R22E Station');
+  await expect(page.locator('vite-error-overlay')).toHaveCount(0);
+  await page.getByText('Add NAS').click();
+
+  const remember = page.getByRole('checkbox', { name: /Remember this device/ });
+  const local = page.getByRole('radio', { name: /^Local Recommended/ });
+  await remember.check();
+  await expect(remember).toBeChecked();
+  await expect(local).toBeChecked();
+  for (const theme of ['light', 'dark'] as const) {
+    // Theme is normally controlled by Appearance; set it here to isolate the
+    // control rendering while the unfinished setup form remains open.
+    await page.locator('html').evaluate((element, value) => element.setAttribute('data-theme', value), theme);
+    const control = await remember.evaluate(element => {
+      const style = getComputedStyle(element);
+      return {
+        appearance: style.appearance,
+        background: style.backgroundColor,
+        image: style.backgroundImage,
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+      };
+    });
+    expect(control.appearance).toBe('none');
+    expect(control.image).toContain('data:image/svg+xml');
+    expect(control.width).toBe(16);
+    expect(control.height).toBe(16);
+    expect(control.background).not.toBe('rgb(255, 255, 255)');
+    expect(await local.evaluate(element => getComputedStyle(element).backgroundImage)).toContain('radial-gradient');
+  }
+  await remember.focus();
+  await page.keyboard.press('Space');
+  await expect(remember).not.toBeChecked();
+  expect(await remember.evaluate(element => getComputedStyle(element).backgroundImage)).toBe('none');
+  await page.keyboard.press('Space');
+  await expect(remember).toBeChecked();
+  expect(await remember.evaluate(element => getComputedStyle(element).outlineStyle)).toBe('solid');
+  const popup = page.locator('[class*="surface_popup"]');
+  expect(await popup.evaluate(element => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }))).toEqual({ width: 580, height: 520 });
+  await page.screenshot({ path: path.join(tmpdir(), 'r22e-setup-controls-dark-580.png') });
+  await page.emulateMedia({ forcedColors: 'active' });
+  expect(await remember.evaluate(element => getComputedStyle(element).appearance)).toBe('auto');
+});
+
 test('keeps transfer columns readable and Appearance aligned with app mode', async ({ page, gotoPopup, mockNas }) => {
   mockNas.state.statistics = { speed_download: 23_200_000, speed_upload: 700_000 };
   mockNas.state.tasks = [{
@@ -19,15 +66,23 @@ test('keeps transfer columns readable and Appearance aligned with app mode', asy
   // Edge sizes an action popup from its document; the shell cannot depend on
   // the viewport height or the popup can shrink to only its header.
   await page.setViewportSize({ width: 580, height: 100 });
-  expect(await page.locator('[class*="surface_popup"]').evaluate(element => element.getBoundingClientRect().height)).toBe(580);
+  expect(await page.locator('[class*="surface_popup"]').evaluate(element => element.getBoundingClientRect().height)).toBe(520);
   await page.setViewportSize({ width: 580, height: 640 });
   await page.getByText('Add NAS').click();
-  await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
+  await page.getByRole('button', { name: /Local HTTP Port 5000/ }).click();
+  await page.getByLabel(/^NAS address$/i).fill(mockNas.getUrl());
+  await expect(page.getByLabel('Username', { exact: true })).toBeEnabled();
   await page.getByLabel(/Username/i).fill('admin');
   await page.getByPlaceholder('Password').fill('password123');
-  await page.getByRole('button', { name: 'Save Profile' }).click();
-  await page.getByPlaceholder('Password').fill('password123');
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('button', { name: 'Save and connect' }).click();
+  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  const filterTabs = page.getByRole('tablist', { name: 'Task filters' }).getByRole('tab');
+  await expect(filterTabs).toHaveCount(5);
+  const filterBoxes = await filterTabs.evaluateAll(tabs => tabs.map(tab => tab.getBoundingClientRect().toJSON()));
+  expect(new Set(filterBoxes.map(box => Math.round(box.y))).size).toBe(1);
+  expect(filterBoxes[4]!.right).toBeLessThanOrEqual(580);
+  await expect(page.getByText('Speed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Status', { exact: true })).toBeVisible();
   const row = page.getByRole('button', { name: 'MobLand.S01E07.1080p.mkv', exact: true }).locator('..');
   await expect(row).toBeVisible();
 

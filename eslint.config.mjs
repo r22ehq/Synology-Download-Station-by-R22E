@@ -11,6 +11,11 @@ export default tseslint.config(
       '**/.wxt/**',
       '**/dist/**',
       '**/scratch/**',
+      '**/output/**',
+      '**/release-candidates/**',
+      '**/.playwright-cli/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '*.config.*',
       '*.cjs'
     ],
@@ -43,6 +48,21 @@ export default tseslint.config(
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'AssignmentExpression[left.type="MemberExpression"][left.property.name=/^(innerHTML|outerHTML)$/]',
+          message: 'Do not assign raw HTML in extension code.',
+        },
+        {
+          selector: 'JSXAttribute[name.name="dangerouslySetInnerHTML"]',
+          message: 'Do not render untrusted HTML in extension UI.',
+        },
+      ],
     },
+  },
+  {
+    files: ['scripts/**/*.mjs', 'tests/**/*.ts', 'tests/**/*.tsx'],
+    languageOptions: { globals: globals.node },
   }
 );

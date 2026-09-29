@@ -99,4 +99,42 @@ describe('SessionManager', () => {
     expect(manager.getSid('a')).toBeNull();
     expect(manager.getSid('b')).toBeNull();
   });
+
+  it('does not erase a login completed during a pending storage read', async () => {
+    let finishRead!: (record: Record<string, AuthSession>) => void;
+    const pending = manager.restoreFromStorage(() => new Promise(resolve => { finishRead = resolve; }));
+    manager.setSession(profileId, { sid: 'new-login-sid' });
+    finishRead({});
+    expect(await pending).toBe(false);
+    expect(manager.getSid(profileId)).toBe('new-login-sid');
+  });
+
+  it.each(['clearSession', 'clearAll'] as const)('does not resurrect a session after %s during a storage read', async operation => {
+    manager.setSession(profileId, { sid: 'old-sid' });
+    let finishRead!: (record: Record<string, AuthSession>) => void;
+    const pending = manager.restoreFromStorage(() => new Promise(resolve => { finishRead = resolve; }));
+    manager[operation](profileId);
+    finishRead({ [profileId]: { sid: 'old-sid' } });
+    expect(await pending).toBe(false);
+    expect(manager.getSid(profileId)).toBeNull();
+  });
+
+  it('preserves live sessions while restoring other profiles from storage', async () => {
+    manager.setSession(profileId, { sid: 'live-sid' });
+    expect(await manager.restoreFromStorage(async () => ({
+      [profileId]: { sid: 'stale-sid' },
+      'other-nas': { sid: 'stored-sid' },
+    }))).toBe(true);
+    expect(manager.getSid(profileId)).toBe('live-sid');
+    expect(manager.getSid('other-nas')).toBe('stored-sid');
+  });
+
+  it('does not let overlapping hydration overwrite the first completed restore', async () => {
+    let finishRead!: (record: Record<string, AuthSession>) => void;
+    const pending = manager.restoreFromStorage(() => new Promise(resolve => { finishRead = resolve; }));
+    await manager.restoreFromStorage(async () => ({ [profileId]: { sid: 'restored-sid' } }));
+    finishRead({});
+    expect(await pending).toBe(false);
+    expect(manager.getSid(profileId)).toBe('restored-sid');
+  });
 });

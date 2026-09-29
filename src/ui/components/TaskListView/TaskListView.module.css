@@ -81,7 +81,7 @@
 
 @media (max-width: 800px) {
   .tableHeader,
-  .row { grid-template-columns: 28px minmax(0, 1fr) 95px 90px 100px 48px; column-gap: 8px; }
+  .row { grid-template-columns: 28px minmax(0, 1fr) 82px 80px 80px 48px; column-gap: 7px; }
   .tableHeader > :nth-child(5),
   .sizeCell { display: none; }
 }
@@ -119,6 +119,10 @@
 }
 
 @media (max-width: 370px) {
+  .filters { justify-content: flex-start; overflow-x: auto; }
+  .filters button { flex-shrink: 0; }
+  .toolbar { display: flex; overflow-x: auto; }
+  .toolbar > button { flex-shrink: 0; }
   .tableHeader,
   .row { grid-template-columns: 24px minmax(0, 1fr) 82px; }
 }

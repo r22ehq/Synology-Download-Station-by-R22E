@@ -28,7 +28,7 @@ export function mapSynologyError(err: unknown): Error {
   if (err instanceof SynoError) {
     switch (err.code) {
       case AuthErrorCodes.INVALID_CREDENTIALS:
-        return new InvalidCredentialsError('Invalid credentials');
+        return new InvalidCredentialsError('Incorrect username or password. Check your NAS credentials and try again.');
       case AuthErrorCodes.ACCOUNT_DISABLED:
         return new AccountDisabledError('Account is disabled');
       case AuthErrorCodes.PERMISSION_DENIED:

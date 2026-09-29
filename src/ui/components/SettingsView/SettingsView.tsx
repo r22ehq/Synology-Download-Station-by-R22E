@@ -1,24 +1,37 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { Bell, Database, ExternalLink, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
+import { Bell, Database, ExternalLink, Folder, Gauge, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
 import { Button } from '../Button/Button';
 import { Input } from '../Input/Input';
+import { PasswordInput } from '../Input/PasswordInput';
 import { SelectControl } from '../SelectControl/SelectControl';
-import { addProfile, activeProfileId, profiles, removeProfile, settings, setActiveProfile, updateSettings } from '../../state/app-state';
+import { addProfile, activeProfileId, profiles, removeProfile, settings, setActiveProfile, updateProfile, updateSettings } from '../../state/app-state';
 import { currentView, navigateTo, settingsSection } from '../../state/navigation';
 import { testConnection } from '../../utils/connection-tester';
+import { sendMessage } from '@/core/platform/messaging/message-contracts';
 import { normalizeNasUrl } from '@/core/domain/connection/nas-url';
 import { discoverQuickConnectEndpoints, normalizeQuickConnectId } from '@/core/domain/connection/quickconnect';
 import { PermissionsManager } from '@/core/platform/browser/permissions';
+import { getBrowserInfo } from '@/core/platform/browser/browser-adapter';
 import { SettingsBackup } from '../SettingsBackup/SettingsBackup';
 import { AppearanceEditor } from '../AppearanceEditor/AppearanceEditor';
 import { completionSounds, getCompletionSound, type CompletionSoundId } from '@/core/platform/browser/completion-sounds';
+import { DownloadPreferences } from '../DownloadPreferences/DownloadPreferences';
 import styles from './SettingsView.module.css';
 
-type Section = 'connection' | 'refresh' | 'browser' | 'appearance' | 'notifications' | 'data' | 'about';
+type Section = 'connection' | 'location' | 'speed' | 'refresh' | 'browser' | 'appearance' | 'notifications' | 'data' | 'about';
+interface AddressDraft {
+  url: string;
+  localProtocol: 'http' | 'https';
+  connectionType: 'local' | 'quickconnect';
+  quickConnectId: string;
+  quickConnectRoutes: { id: string; urls: string[] } | null;
+}
 const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
   { id: 'connection', label: 'Connection', icon: Server },
+  { id: 'location', label: 'Location', icon: Folder },
+  { id: 'speed', label: 'Speed', icon: Gauge },
   { id: 'refresh', label: 'Refresh', icon: RefreshCw },
   { id: 'browser', label: 'Browser', icon: Globe2 },
   { id: 'appearance', label: 'Appearance', icon: Palette },
@@ -28,26 +41,114 @@ const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
 ];
 
 const projectUrl = 'https://github.com/r22ehq/Synology-Download-Station-by-R22E';
+const certificateHelpUrl = 'https://kb.synology.com/en-my/DSM/tutorial/Why_did_I_see_a_not_secure_warning_in_the_browser_when_connecting_to_my_Synology_product';
 
 const displayUrl = (profile: { protocol: string; host: string; port: number }) => `${profile.protocol}://${profile.host}:${profile.port}`;
+const hasAddress = (value: string) => value.trim().replace(/^https?:\/\//i, '').trim().length > 0;
 
-const endpointCandidates = (value: string) => {
+const endpointCandidates = (value: string, defaultProtocol: 'http' | 'https' = 'https') => {
   const trimmed = value.trim().replace(/\/+$/, '');
   if (/^https?:\/\//i.test(trimmed)) return [trimmed];
-  if (/:(\d+)$/.test(trimmed)) return [`https://${trimmed}`];
-  return [`https://${trimmed}:5001`, `http://${trimmed}:5000`];
+  if (/:(\d+)$/.test(trimmed)) return [`${defaultProtocol}://${trimmed}`];
+  return [`${defaultProtocol}://${trimmed}:${defaultProtocol === 'https' ? 5001 : 5000}`];
 };
 
-export function SettingsView() {
+const isHttpsIpAddress = (value: string, defaultProtocol: 'http' | 'https') => {
+  try {
+    const { protocol, host } = normalizeNasUrl(endpointCandidates(value, defaultProtocol)[0]!);
+    return protocol === 'https' && /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host);
+  } catch {
+    return false;
+  }
+};
+
+export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: () => void; inActionPopup?: boolean }) {
   const isAdding = currentView.value === 'add_nas';
   const [section, setSection] = useState<Section>(settingsSection.value);
   const [url, setUrl] = useState('');
+  const [localProtocol, setLocalProtocol] = useState<'http' | 'https'>('http');
   const [connectionType, setConnectionType] = useState<'local' | 'quickconnect'>('local');
   const [quickConnectId, setQuickConnectId] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [waitingFor2fa, setWaitingFor2fa] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
+  const pendingProfile = useRef<{ id: string; endpoint: string; username: string } | null>(null);
+  const previousActiveProfileId = useRef<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
+  const [permissionKey, setPermissionKey] = useState('');
+  const [isRequestingAccess, setIsRequestingAccess] = useState(false);
+  const [quickConnectRoutes, setQuickConnectRoutes] = useState<{ id: string; urls: string[] } | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const addressEdited = useRef(false);
+  const draftKey = 'nasSetupAddress';
+  let accessUrls: string[] = [];
+  try {
+    accessUrls = connectionType === 'local'
+      ? (hasAddress(url) ? [normalizeNasUrl(endpointCandidates(url, localProtocol)[0]!).baseUrl] : [])
+      : (quickConnectRoutes?.id === quickConnectId.trim() ? quickConnectRoutes.urls : []);
+  } catch { /* An incomplete address cannot request access. */ }
+  const accessKey = JSON.stringify(accessUrls);
+  const canEnterCredentials = accessUrls.length > 0 && permissionKey === accessKey;
+
+  // Only the address step survives a closed popup. Never persist credentials
+  // or OTPs from an unfinished form, even temporarily.
+  useEffect(() => {
+    if (!isAdding) return;
+    void browser.storage.session.get(draftKey).then(data => {
+      const draft = data[draftKey] as Partial<AddressDraft> | undefined;
+      if (!addressEdited.current && draft && typeof draft.url === 'string') {
+        setUrl(draft.url);
+        setLocalProtocol(draft.localProtocol === 'https' ? 'https' : 'http');
+        setConnectionType(draft.connectionType === 'quickconnect' ? 'quickconnect' : 'local');
+        setQuickConnectId(typeof draft.quickConnectId === 'string' ? draft.quickConnectId : '');
+        const routes = draft.quickConnectRoutes;
+        if (routes && typeof routes.id === 'string' && Array.isArray(routes.urls) && routes.urls.every(value => typeof value === 'string')) setQuickConnectRoutes(routes);
+      }
+    }).catch(() => {}).finally(() => setDraftLoaded(true));
+  }, [isAdding]);
+
+  useEffect(() => {
+    if (!isAdding || !draftLoaded) return;
+    void browser.storage.session.set({ [draftKey]: { url, localProtocol, connectionType, quickConnectId, quickConnectRoutes } }).catch(() => {});
+  }, [isAdding, draftLoaded, url, localProtocol, connectionType, quickConnectId, quickConnectRoutes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPermissionKey('');
+    if (accessUrls.length) {
+      void Promise.all(accessUrls.map(value => PermissionsManager.hasHostPermission(value))).then(grants => {
+        if (!cancelled && grants.every(Boolean)) setPermissionKey(accessKey);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [accessKey]);
+  const httpsIpAddress = connectionType === 'local' && isHttpsIpAddress(url, localProtocol);
+  const quickConnectAddress = connectionType === 'local' && /(?:^|\.)direct\.quickconnect\.to(?::\d+)?(?:\/|$)/i.test(url.trim().replace(/^https?:\/\//i, ''));
+  const usesHttp = connectionType === 'local' && localProtocol === 'http';
+  const hasNasAddress = url.trim().replace(/^https?:\/\//i, '').trim().length > 0;
+
+  const updateNasAddress = (value: string) => {
+    addressEdited.current = true;
+    setPermissionKey('');
+    setUrl(value);
+    if (/^http:\/\//i.test(value)) setLocalProtocol('http');
+    else if (/^https:\/\//i.test(value)) setLocalProtocol('https');
+    setTestResult(null);
+  };
+
+  const selectLocalProtocol = (protocol: 'http' | 'https') => {
+    const address = url.trim().replace(/^https?:\/\//i, '');
+    const match = address.match(/^(\[[^\]]+\]|[^/:?#]+)(?::(\d+))?(.*)$/);
+    const port = match?.[2];
+    const nextPort = !port || port === '5000' || port === '5001' ? String(protocol === 'https' ? 5001 : 5000) : port;
+    setLocalProtocol(protocol);
+    updateNasAddress(match ? `${protocol}://${match[1]}:${nextPort}${match[3]}` : `${protocol}://`);
+  };
 
   const previewCompletionSound = () => {
     const sound = getCompletionSound(settings.value?.completionSound);
@@ -57,31 +158,84 @@ export function SettingsView() {
   };
 
   const requestConnectionPermission = async (connectionUrl: string) => {
-    if (await PermissionsManager.hasHostPermission(connectionUrl)) return true;
-    return PermissionsManager.requestHostPermission(connectionUrl);
+    // Start the request before any await: Firefox requires the original
+    // button gesture. An existing grant also covers later endpoint checks.
+    if (await PermissionsManager.requestHostPermission(connectionUrl)) return true;
+    return PermissionsManager.hasHostPermission(connectionUrl);
   };
 
-  const resolveEndpoint = async () => {
+  const requestWithVisiblePrompt = (request: () => Promise<boolean>) => {
+    // Firefox anchors this prompt to the browser window behind the action
+    // popup. Start it on the button gesture, then dismiss only that popup.
+    const result = request();
+    if (inActionPopup && getBrowserInfo().name === 'firefox') {
+      const saveDraft = browser.storage.session.set({
+        [draftKey]: { url, localProtocol, connectionType, quickConnectId, quickConnectRoutes },
+        nasSetupResumeAfterPermission: true,
+      }).catch(() => {});
+      let pending = true;
+      let closingForPrompt = false;
+      const closeTimer = window.setTimeout(() => {
+        void saveDraft.then(() => {
+          if (pending) {
+            closingForPrompt = true;
+            window.close();
+          }
+        });
+      }, 250);
+      const finish = () => {
+        pending = false;
+        window.clearTimeout(closeTimer);
+        if (!closingForPrompt) void saveDraft.then(() => browser.storage.session.remove('nasSetupResumeAfterPermission')).catch(() => {});
+      };
+      void result.then(finish, finish);
+    }
+    return result;
+  };
+
+  const prepareAccess = async () => {
+    setIsRequestingAccess(true);
+    setTestResult(null);
+    try {
+      if (connectionType === 'quickconnect' && !accessUrls.length) {
+        const id = normalizeQuickConnectId(quickConnectId);
+        // Permission requests start directly in the click handler, before any
+        // asynchronous discovery. Endpoint access uses a separate click.
+        if (!await requestWithVisiblePrompt(() => requestConnectionPermission('https://global.quickconnect.to'))) throw new Error('Allow QuickConnect access to find your NAS.');
+        const urls = await discoverQuickConnectEndpoints(id);
+        setQuickConnectRoutes({ id, urls });
+        return;
+      }
+      if (!accessUrls.length) throw new Error('Enter a valid NAS address first.');
+      if (!await requestWithVisiblePrompt(() => PermissionsManager.requestHostPermissions(accessUrls))) throw new Error('NAS access was not allowed. Try again before entering your credentials.');
+      setPermissionKey(accessKey);
+    } catch (error) {
+      setTestResult({ success: false, msg: error instanceof Error ? error.message : 'Could not request NAS access.' });
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
+
+  const resolveEndpoint = async (checkCredentials = true) => {
     const diagnostics: string[] = [];
     let candidates: string[];
     if (connectionType === 'quickconnect') {
-      const id = normalizeQuickConnectId(quickConnectId);
-      if (!await requestConnectionPermission('https://global.quickconnect.to')) {
-        throw new Error('Permission to contact Synology QuickConnect is required.');
-      }
-      candidates = await discoverQuickConnectEndpoints(id);
+      candidates = accessUrls;
     } else {
-      candidates = endpointCandidates(url);
+      candidates = endpointCandidates(url, localProtocol);
     }
+    if (!canEnterCredentials) throw new Error('Allow NAS access before testing or connecting.');
     for (const candidate of candidates) {
       const normalized = normalizeNasUrl(candidate);
+      if (connectionType === 'local' && normalized.protocol !== localProtocol) throw new Error('Choose the matching Local HTTPS or Local HTTP option for this address.');
       const normalizedUrl = `${normalized.protocol}://${normalized.host}:${normalized.port}`;
-      if (!await requestConnectionPermission(normalizedUrl)) {
+      if (!await PermissionsManager.hasHostPermission(normalizedUrl)) {
         diagnostics.push(`${normalizedUrl}: permission denied`);
         continue;
       }
-      const result = await testConnection({ url: normalizedUrl, username, password });
+      const result = await testConnection({ url: normalizedUrl, username, password: checkCredentials ? password : '' });
       if (result.success) return { normalized, result };
+      if (result.authenticationError) throw new Error(result.diagnostic || 'Sign-in failed. Check your NAS account.');
       diagnostics.push(`${normalizedUrl}: ${result.diagnostic || 'unavailable'}`);
     }
     const prefix = connectionType === 'quickconnect'
@@ -98,35 +252,74 @@ export function SettingsView() {
       setTestResult({ success: true, msg: `${result.diagnostic || 'Connection successful.'} Endpoint: ${normalized.baseUrl}` });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Invalid NAS address.';
-      setTestResult({ success: false, msg: message === 'Failed to fetch' ? 'The NAS could not be reached. Verify the address, port, and certificate.' : message });
+      setTestResult({ success: false, msg: httpsIpAddress && /Failed to fetch|NetworkError|network request failed/i.test(message)
+        ? 'HTTPS could not verify or reach this IP. If your NAS has a secure hostname, use it here. Otherwise you can choose local HTTP below, with an explicit security warning.'
+        : message === 'Failed to fetch' ? 'The NAS could not be reached. Check its address, port, and certificate.' : message });
     } finally {
       setIsTesting(false);
     }
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
+    setTestResult(null);
     try {
-      const normalized = connectionType === 'quickconnect'
-        ? (await resolveEndpoint()).normalized
-        : endpointCandidates(url).length === 1
-          ? normalizeNasUrl(endpointCandidates(url)[0]!)
-          : (await resolveEndpoint()).normalized;
+      if (!password) throw new Error('Enter your NAS password to connect.');
+      if (waitingFor2fa && !otpCode.trim()) throw new Error('Enter the verification code.');
+      const normalized = (await resolveEndpoint(false)).normalized;
       const normalizedUrl = `${normalized.protocol}://${normalized.host}:${normalized.port}`;
-      if (!await requestConnectionPermission(normalizedUrl)) throw new Error('Host permission is required to save this NAS.');
-      const newId = await addProfile({
+      const profile = {
         name: connectionType === 'quickconnect' ? normalizeQuickConnectId(quickConnectId) : normalized.host,
         protocol: normalized.protocol,
         host: normalized.host,
         port: normalized.port,
         username,
         ...(connectionType === 'quickconnect' ? { quickConnectId: normalizeQuickConnectId(quickConnectId) } : {}),
+      };
+      let profileId = pendingProfile.current?.id;
+      if (!profileId) {
+        previousActiveProfileId.current = activeProfileId.value;
+        profileId = await addProfile(profile);
+      } else if (pendingProfile.current?.endpoint !== normalizedUrl || pendingProfile.current?.username !== username) {
+        await updateProfile(profileId, profile);
+      }
+      pendingProfile.current = { id: profileId, endpoint: normalizedUrl, username };
+      await setActiveProfile(profileId);
+      const result = await sendMessage('auth:login', {
+        account: username,
+        password,
+        otpCode: otpCode.trim() || undefined,
+        rememberDevice,
+        savePassword,
       });
-      await setActiveProfile(newId);
-      setUrl(''); setQuickConnectId(''); setUsername(''); setPassword(''); setTestResult(null);
+      if (result.requires2fa) {
+        setWaitingFor2fa(true);
+        setTestResult({ success: true, msg: 'Enter the verification code below to finish connecting.' });
+        return;
+      }
+      setPassword(''); setOtpCode(''); setWaitingFor2fa(false); setTestResult(null);
+      await browser.storage.session.remove(draftKey);
       navigateTo('main');
     } catch (error) {
+      if (!waitingFor2fa && pendingProfile.current) {
+        await removeProfile(pendingProfile.current.id);
+        if (previousActiveProfileId.current) await setActiveProfile(previousActiveProfileId.current);
+        pendingProfile.current = null;
+      }
       setTestResult({ success: false, msg: error instanceof Error ? error.message : 'Invalid NAS address.' });
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const cancelSetup = async () => {
+    await browser.storage.session.remove(draftKey);
+    if (pendingProfile.current) {
+      await removeProfile(pendingProfile.current.id);
+      if (previousActiveProfileId.current) await setActiveProfile(previousActiveProfileId.current);
+      pendingProfile.current = null;
+    }
+    navigateTo('settings');
   };
 
   const removeConnection = async (id: string, name: string) => {
@@ -146,23 +339,43 @@ export function SettingsView() {
   if (isAdding) {
     return (
       <div className={styles.addPage}>
-        <div className={styles.pageHeading}><div><h2>New connection</h2><p>Connect only to a NAS you trust. Access is requested for this host only.</p></div></div>
+        <div className={styles.pageHeading}><div><h2>New connection</h2><p>Enter your NAS address and allow access before entering your credentials.</p></div></div>
         <div className={styles.formCard}>
           <fieldset className={styles.connectionMethods}>
             <legend>Connection method</legend>
-            <label><input type="radio" name="connection-method" checked={connectionType === 'local'} onChange={() => { setConnectionType('local'); setTestResult(null); }} /><span>Local <strong>Recommended</strong><small>Use your NAS address for a reliable connection.</small></span></label>
+            <label><input type="radio" name="connection-method" checked={connectionType === 'local'} onChange={() => { setConnectionType('local'); setTestResult(null); }} /><span>Local <strong>Recommended</strong><small>Connect to your NAS on your network.</small></span></label>
             <label><input type="radio" name="connection-method" checked={connectionType === 'quickconnect'} onChange={() => { setConnectionType('quickconnect'); setTestResult(null); }} /><span>QuickConnect <em>Unofficial · may break</em><small>Enter just your QuickConnect ID. Direct connections only; relay is not supported.</small></span></label>
           </fieldset>
           {connectionType === 'local'
-            ? <Input id="nas-url" label="NAS URL or address" helperText="Use a hostname or IP address. If omitted, HTTPS and port 5001 are used." value={url} onInput={event => setUrl(event.currentTarget.value)} placeholder="https://192.168.1.10:5001" />
-            : <Input id="quickconnect-id" label="QuickConnect ID" helperText="We find and test a direct Synology address before saving. The connection may stop working if your network changes." value={quickConnectId} onInput={event => setQuickConnectId(event.currentTarget.value)} placeholder="your-quickconnect-id" />}
-          <Input id="nas-username" label="Username" value={username} onInput={event => setUsername(event.currentTarget.value)} autocomplete="username" />
-          <Input id="nas-password" label="Password" helperText="Used to test the connection and never stored." type="password" value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="new-password" placeholder="Password" />
+            ? <>
+              <div className={styles.protocolChoices} role="group" aria-label="Local connection protocol">
+                <button type="button" aria-pressed={usesHttp} className={usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('http')}><strong>Local HTTP</strong><small>Port 5000 · not encrypted</small></button>
+                <button type="button" aria-pressed={!usesHttp} className={!usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('https')}><strong>Local HTTPS</strong><small>Port 5001 · valid certificate required</small></button>
+              </div>
+              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} placeholder={usesHttp ? 'http://192.168.0.81:5000' : 'https://your-nas.example.com:5001'} />
+              <div className={styles.connectionHint}>
+                {usesHttp
+                  ? <span>Not encrypted. Use only on a trusted local network.</span>
+                  : quickConnectAddress
+                    ? <span>This is a QuickConnect address, not an independent local hostname.</span>
+                  : httpsIpAddress
+                    ? <span>This IP may not match your NAS certificate. Use a certified local hostname.</span>
+                    : <span>Use a local hostname with a valid certificate.</span>}
+                {!usesHttp && <> <a className={styles.certificateLink} href={certificateHelpUrl} target="_blank" rel="noopener noreferrer">HTTPS certificate guide <ExternalLink size={12} aria-hidden="true" /></a></>}
+              </div>
+            </>
+            : <Input id="quickconnect-id" label="QuickConnect ID" helperText="We find a direct Synology address. Relay is not supported." value={quickConnectId} onInput={event => { addressEdited.current = true; setQuickConnectId(event.currentTarget.value); }} placeholder="your-quickconnect-id" />}
+          {!canEnterCredentials && <Button size="sm" onClick={prepareAccess} isLoading={isRequestingAccess} disabled={!(connectionType === 'local' ? hasNasAddress : quickConnectId.trim())}>{connectionType === 'quickconnect' && !accessUrls.length ? 'Find direct NAS address' : 'Allow NAS access'}</Button>}
+          <Input id="nas-username" label="Username" disabled={!canEnterCredentials} value={username} onInput={event => setUsername(event.currentTarget.value)} autocomplete="username" />
+          <PasswordInput id="nas-password" label="Password" disabled={!canEnterCredentials} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder="Password" />
+          {waitingFor2fa && <Input id="nas-otp" label="Verification code" value={otpCode} onInput={event => setOtpCode(event.currentTarget.value)} inputMode="numeric" autocomplete="one-time-code" placeholder="Verification code" />}
+          <label className={styles.saveOption}><input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.currentTarget.checked)} /><span>Remember this device <small>Keep the NAS session and device token in this browser.</small></span></label>
+          <label className={styles.saveOption}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span>Save password on this device <small>Optional. Stored locally in this browser; never synced or exported.</small></span></label>
           {testResult && <div className={testResult.success ? styles.success : styles.error} role="status">{testResult.msg}</div>}
           <div className={styles.actions}>
-            <Button variant="ghost" size="sm" onClick={() => navigateTo('settings')}>Cancel</Button>
-            <Button variant="secondary" size="sm" onClick={handleTest} isLoading={isTesting} disabled={!(connectionType === 'local' ? url : quickConnectId) || !username}>Test connection</Button>
-            <Button size="sm" onClick={handleSave} disabled={!(connectionType === 'local' ? url : quickConnectId) || !username}>Save Profile</Button>
+            <Button variant="ghost" size="sm" onClick={cancelSetup}>Cancel</Button>
+            <Button variant="secondary" size="sm" onClick={handleTest} isLoading={isTesting} disabled={isSaving || !canEnterCredentials || !username}>Test connection</Button>
+            <Button size="sm" onClick={handleSave} isLoading={isSaving} disabled={isTesting || !canEnterCredentials || !username}>{waitingFor2fa ? 'Verify and connect' : 'Save and connect'}</Button>
           </div>
         </div>
       </div>
@@ -170,8 +383,10 @@ export function SettingsView() {
   }
 
   const content = {
+    location: <DownloadPreferences section="location" />,
+    speed: <DownloadPreferences section="speed" />,
     connection: <>
-      <div className={styles.pageHeading}><div><h2>Connection</h2><p>Switch profiles or add another Synology NAS.</p></div><Button size="sm" icon={<Plus size={15} />} onClick={() => navigateTo('add_nas')}>Add NAS</Button></div>
+      <div className={styles.pageHeading}><div><h2>Connection</h2><p>Switch profiles or add another Synology NAS.</p></div><Button size="sm" icon={<Plus size={15} />} onClick={onAddNas}>Add NAS</Button></div>
       <div className={styles.profileList}>
         {!profiles.value.length && <div className={styles.empty}>No NAS profiles have been added.</div>}
         {profiles.value.map(profile => <article className={`${styles.profileCard} ${activeProfileId.value === profile.id ? styles.activeProfile : ''}`} key={profile.id}>

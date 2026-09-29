@@ -62,12 +62,29 @@ describe('DestinationBrowser', () => {
     render(<DestinationBrowser onSelect={mockOnSelect} defaultDestination="/default/fallback" />);
 
     expect(await screen.findByText('Permission denied')).toBeDefined();
-    expect(screen.getByText('You can still use the default destination or enter a path manually.')).toBeDefined();
+    expect(screen.getByText('You can use the NAS default or enter a folder path below.')).toBeDefined();
     
-    const fallbackBtn = screen.getByText('Use Default (/default/fallback)');
+    const fallbackBtn = screen.getByText('Use path');
     fireEvent.click(fallbackBtn);
     
     expect(mockOnSelect).toHaveBeenCalledWith('/default/fallback');
+  });
+
+  it('can restore the NAS default even when browsing fails', async () => {
+    vi.mocked(sendMessage).mockRejectedValueOnce(new Error('Permission denied'));
+    render(<DestinationBrowser onSelect={mockOnSelect} />);
+    await screen.findByText('Permission denied');
+    fireEvent.click(screen.getByText('Use NAS default'));
+    expect(mockOnSelect).toHaveBeenCalledWith('');
+  });
+
+  it('rejects relative paths and traversal', async () => {
+    vi.mocked(sendMessage).mockResolvedValueOnce({ folders: [] });
+    render(<DestinationBrowser onSelect={mockOnSelect} defaultDestination="/downloads/../system" />);
+    await screen.findByText('No shared folders available.');
+    fireEvent.click(screen.getByText('Use path'));
+    expect(screen.getByRole('alert').textContent).toContain('Enter a NAS folder path');
+    expect(mockOnSelect).not.toHaveBeenCalled();
   });
 
   it('should handle empty folders gracefully', async () => {

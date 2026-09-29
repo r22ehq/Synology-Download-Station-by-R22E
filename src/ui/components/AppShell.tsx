@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser';
 import { Plus, Search, X } from 'lucide-preact';
 import type { DownloadTask } from '@/core/synology/download-station/types';
 import { sendMessage } from '@/core/platform/messaging/message-contracts';
-import { taskSnapshotStorage } from '@/core/platform/storage/storage-items';
+import { sessionDataStorage, taskSnapshotStorage } from '@/core/platform/storage/storage-items';
 import { PermissionsManager } from '@/core/platform/browser/permissions';
 import { activeProfile, initAppState, isReady } from '../state/app-state';
 import { currentView, navigateTo, type AppView } from '../state/navigation';
@@ -13,6 +13,7 @@ import { AddTaskModal } from './AddTaskModal/AddTaskModal';
 import { SettingsView } from './SettingsView/SettingsView';
 import { Button } from './Button/Button';
 import { Input } from './Input/Input';
+import { PasswordInput } from './Input/PasswordInput';
 import { fileStationFolderUrl } from '../utils/download-station-url';
 import styles from './AppShell.module.css';
 
@@ -27,6 +28,9 @@ interface AppShellProps {
 const toErrorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.';
 
 export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellProps) {
+  const openAddNas = () => {
+    navigateTo('add_nas');
+  };
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [stats, setStats] = useState({ speedDownload: 0, speedUpload: 0 });
@@ -63,8 +67,16 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
 
   useEffect(() => {
     navigateTo(initialView);
-    initAppState().catch(error => setMessage({ tone: 'error', text: toErrorMessage(error) }));
-  }, [initialView]);
+    void initAppState().then(async () => {
+      if (surface !== 'popup') return;
+      const resumeKey = 'nasSetupResumeAfterPermission';
+      const data = await browser.storage.session.get(resumeKey);
+      if (data[resumeKey]) {
+        await browser.storage.session.remove(resumeKey);
+        navigateTo('add_nas');
+      }
+    }).catch(error => setMessage({ tone: 'error', text: toErrorMessage(error) }));
+  }, [initialView, surface]);
 
   useEffect(() => {
     if (previousView.current !== currentView.value) setAnimatedView(currentView.value);
@@ -113,22 +125,29 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
       return;
     }
     let active = true;
+    let authCheck = 0;
     setAuthStatus('loading');
-    sendMessage('auth:status', undefined).then(result => {
-      if (!active) return;
-      const authenticated = result.status === 'authenticated';
-      setWaitingFor2fa(result.status === 'waiting-for-2fa');
-      setRememberDevice(Boolean(result.rememberedDevice));
-      setSavePassword(Boolean(result.savedPassword));
-      setHasSavedPassword(Boolean(result.savedPassword));
-      setAuthStatus(authenticated ? 'authenticated' : 'disconnected');
-      if (authenticated) refresh();
-    }).catch(error => {
-      if (!active) return;
-      setAuthStatus('disconnected');
-      setMessage({ tone: 'error', text: toErrorMessage(error) });
-    });
-    return () => { active = false; };
+    const syncAuth = () => {
+      const request = ++authCheck;
+      void sendMessage('auth:status', undefined).then(result => {
+        if (!active || request !== authCheck) return;
+        const authenticated = result.status === 'authenticated';
+        setWaitingFor2fa(result.status === 'waiting-for-2fa');
+        setRememberDevice(Boolean(result.rememberedDevice));
+        setSavePassword(Boolean(result.savedPassword));
+        setHasSavedPassword(Boolean(result.savedPassword));
+        setAuthStatus(authenticated ? 'authenticated' : 'disconnected');
+        if (authenticated) refresh();
+      }).catch(error => {
+        if (!active || request !== authCheck) return;
+        setAuthStatus('disconnected');
+        setMessage({ tone: 'error', text: toErrorMessage(error) });
+      });
+    };
+    syncAuth();
+    // Keep an already-open Firefox sidebar in sync with popup sign-in/out.
+    const unwatch = sessionDataStorage.watch(syncAuth);
+    return () => { active = false; unwatch(); };
   }, [isReady.value, activeProfile.value?.id]);
 
   const login = async () => {
@@ -185,19 +204,14 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
     }
   };
 
-  const ensureTorrentPermission = async (url: string) => {
-    if (!/^https?:/i.test(url) || !/\.torrent(?:$|[?#])/i.test(url)) return true;
-    if (await PermissionsManager.hasHostPermission(url)) return true;
-    return PermissionsManager.requestHostPermission(url);
-  };
-
   const createTasks = async (data: { urls?: string[]; file?: File; destination?: string }) => {
     setIsBusy(true);
     setAddError('');
     try {
       const urls = data.urls || [];
-      for (const url of urls) {
-        if (!await ensureTorrentPermission(url)) throw new Error(`Permission was not granted for ${new URL(url).host}.`);
+      const torrentSources = urls.filter(url => /^https?:/i.test(url) && /\.torrent(?:$|[?#])/i.test(url));
+      if (!await PermissionsManager.requestHostPermissions(torrentSources)) {
+        throw new Error('Permission was not granted for the selected torrent sources.');
       }
       const fileData = data.file ? {
         name: data.file.name,
@@ -261,12 +275,12 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
       <img src="/icon-128.png" width="80" height="80" alt="" />
       <h2>No NAS Configured</h2>
       <p>Add a NAS profile to send downloads directly to Download Station.</p>
-      <Button onClick={() => navigateTo('add_nas')}>Add NAS</Button>
+      <Button onClick={openAddNas}>Add NAS</Button>
     </section>
   ) : authStatus !== 'authenticated' ? (
     <section className={styles.loginCard}>
       <div><h2>{waitingFor2fa ? 'Two-step verification' : 'Login Required'}</h2><p>{activeProfile.value.protocol}://{activeProfile.value.host}:{activeProfile.value.port} · {activeProfile.value.username}</p></div>
-      <Input id="nas-password" type="password" label="Password" helperText={hasSavedPassword ? 'A password is saved on this device. Leave this blank to use it.' : 'Used to sign in. Saved locally only if you choose below.'} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder={hasSavedPassword ? 'Saved on this device' : 'Password'} />
+      <PasswordInput id="nas-password" label="Password" helperText={hasSavedPassword ? 'A password is saved on this device. Leave this blank to use it.' : 'Used to sign in. Saved locally only if you choose below.'} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder={hasSavedPassword ? 'Saved on this device' : 'Password'} />
       {waitingFor2fa && <Input id="nas-otp" label="Verification code" value={otpCode} onInput={event => setOtpCode(event.currentTarget.value)} inputMode="numeric" autocomplete="one-time-code" placeholder="Verification Code" />}
       <label className={styles.checkRow}><input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.currentTarget.checked)} /><span>Remember this device <small>Keeps the NAS session and device token locally. The NAS can still expire a session.</small></span></label>
       <label className={styles.checkRow}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span>Save password on this device <small>Allows automatic sign-in after the session expires. Stored in this browser only; never synced or exported.</small></span></label>
@@ -289,7 +303,7 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
     <div className={`${styles.shell} ${styles[`surface_${surface}`]}`}>
       <Header authStatus={authStatus} stats={stats} onRefresh={refresh} onToggleSearch={() => setSearchOpen(value => !value)} searchOpen={searchOpen} onLogout={logout} refreshState={refreshState} />
       {message && <div className={`${styles.notice} ${styles[message.tone]}`} role="status"><span>{message.text}</span><button onClick={() => setMessage(null)} aria-label="Dismiss message">×</button></div>}
-      <main key={currentView.value} className={`${styles.main} ${currentView.value === 'settings' ? styles.settingsMain : ''} ${animatedView === currentView.value ? (currentView.value === 'main' ? styles.viewBack : styles.viewForward) : ''}`}>{currentView.value === 'main' ? mainContent : <SettingsView />}</main>
+      <main key={currentView.value} className={`${styles.main} ${currentView.value === 'settings' ? styles.settingsMain : ''} ${animatedView === currentView.value ? (currentView.value === 'main' ? styles.viewBack : styles.viewForward) : ''}`}>{currentView.value === 'main' ? mainContent : <SettingsView onAddNas={openAddNas} inActionPopup={surface === 'popup'} />}</main>
       {addOpen && <AddTaskModal onClose={() => setAddOpen(false)} onSubmit={createTasks} isLoading={isBusy} error={addError} />}
     </div>
   );

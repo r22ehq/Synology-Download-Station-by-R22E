@@ -52,6 +52,7 @@ const browserMock = {
       removeListener: vi.fn(),
     },
     getURL: vi.fn((path: string) => `chrome-extension://test-id/${path}`),
+    getManifest: vi.fn(() => ({ version: '0.1.5' })),
     openOptionsPage: vi.fn(async () => undefined),
     id: 'test-extension-id',
   },

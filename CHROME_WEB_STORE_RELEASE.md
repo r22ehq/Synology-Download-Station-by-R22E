@@ -1,13 +1,14 @@
-# Chrome Web Store release sheet — 0.1.2
+# Chrome Web Store release sheet — 0.1.7
 
-This sheet describes the Chrome build in `.output/synology-download-station-by-r22e-0.1.2-chrome.zip`. Use it for the **existing draft item**; do not create a second listing. The ZIP has `manifest.json` at its root. These are proposed, copy-ready English answers based on this build, not a claim of Chrome Web Store approval.
+This sheet describes the Chrome build in `.output/synology-download-station-by-r22e-0.1.7-chrome.zip`. Update the **existing published item** (`fghcklhmghcmhfhhhcmjfenchgghmanp`); do not create a second listing. The ZIP has `manifest.json` at its root. These are copy-ready English answers based on this build, not a claim of Chrome Web Store approval.
 
 ## Before uploading
 
-1. Upload the ZIP under **Package → Upload new package**. The version is `0.1.2`, higher than the existing draft `0.1.0`.
+1. Run `pnpm check:release` before packaging or uploading. The local package version is `0.1.7`. The 0.1.5 draft was submitted for review on 29 September 2026; check the current dashboard and obtain authorization before replacing that submission. Version 0.1.7 has not yet been uploaded or submitted.
 2. **Done:** Updated `PRIVACY.md` was published to the public repository on 27 September 2026 in commit `de41fa6`; its raw public contents were checked. The policy URL below is usable.
-3. **Done:** Real-extension screenshots were captured at `1280×800` as opaque JPEGs with synthetic tasks and a mock NAS. The visible NAS name is `Demo NAS`, with no personal host or account data: `docs/media/tasks-light-1280x800.jpg`, `docs/media/tasks-dark-1280x800.jpg`, and `docs/media/appearance-dark-1280x800.jpg`.
-4. **Done:** A test message to `hello@r22e.com` was received and confirmed by the publisher on 27 September 2026. A Support URL must still be a URL, not an email address.
+3. **Done:** Five 1280×800 current-UI screenshots from `output/edge-store-media/current-0.1.5-hq/store/` were uploaded in the same order to both Localized and Global assets. They show dark and light tasks, appearance colors, notification sounds, and location. They use synthetic tasks and a mock NAS, without personal host or account data.
+4. **Done:** The branded small and marquee promotional tiles are `docs/media/store-small-promo-440x280.jpg` and `docs/media/store-marquee-promo-1400x560.jpg` at the exact Store dimensions.
+5. **Done:** A test message to `hello@r22e.com` was received and confirmed by the publisher on 27 September 2026. A Support URL must still be a URL, not an email address.
 
 ## Store listing
 
@@ -18,9 +19,11 @@ This sheet describes the Chrome build in `.output/synology-download-station-by-r
 | Summary | `Manage Synology Download Station: add links, magnets and torrents, track progress, and control NAS downloads.` (from package, 109 characters) |
 | Category | The closest **Productivity** / **Workflow & Planning** category offered by the current dropdown |
 | Store icon | Use the packaged 128×128 icon (`public/icon-128.png`) if the dashboard does not retain the existing icon |
-| Localized screenshots | Upload `docs/media/tasks-dark-1280x800.jpg` and `docs/media/tasks-light-1280x800.jpg`; up to five |
-| Global screenshots | The shown dashboard marks this field required too. Upload `docs/media/appearance-dark-1280x800.jpg` (or a Tasks image) |
-| Promo video, small promo tile, marquee promo tile | Leave blank unless the dashboard explicitly marks them required |
+| Localized screenshots | Upload `01-tasks-dark.png`, `02-tasks-light.png`, `03-appearance-colors.png`, `04-notifications-sound.png`, `05-location.png` from `output/edge-store-media/current-0.1.5-hq/store/` in that order |
+| Global screenshots | Upload the same five images in the same order; this avoids showing an older UI in languages without localized screenshots |
+| Localized and global promo videos | Leave blank until a genuine YouTube product walkthrough exists; do not use the README GIF as a promo-video URL |
+| Small promo tile | Upload `docs/media/store-small-promo-440x280.jpg` |
+| Marquee promo tile | Upload `docs/media/store-marquee-promo-1400x560.jpg` (optional, but supplied) |
 | Official URL | Select `r22e.com` if it is verified in your Chrome Web Store publisher account; the site is live and belongs to the publisher |
 | Homepage URL | `https://r22e.com/plugins/r22e-station` — the working product page is a better user-facing homepage than the code repository |
 | Support URL | `https://r22e.com/contact` — the working contact page links to the confirmed support email; GitHub Issues remains an alternative for bug reports |
@@ -28,11 +31,7 @@ This sheet describes the Chrome build in `.output/synology-download-station-by-r
 
 **Description — paste into the Store listing Description field:**
 
-> Manage your own Synology Download Station from Chrome. Add URLs, magnet links, and torrent files; monitor task progress and speeds; and pause, resume, or remove tasks. Send a link from the right-click menu, or choose to collect download links from the current page.
->
-> Connect to a Synology NAS on your local network. An experimental QuickConnect-ID option is available for direct connections, but is unofficial and may stop working; QuickConnect relay is not supported. The extension requests access to a NAS or selected source site when needed. Optional browser notifications can alert you when tasks finish or fail.
->
-> A compatible Synology NAS with Download Station and your own account is required. This independent extension is not affiliated with or endorsed by Synology.
+Use `docs/chrome-store-description.txt`, preserving its paragraph breaks and feature headings. Its “WHAT'S NEW IN 0.1.7” section is the public update summary; `CHANGELOG.md` holds the full release history.
 
 ## Privacy
 
@@ -70,7 +69,7 @@ This sheet describes the Chrome build in `.output/synology-download-station-by-r
 | Visibility | Public for the intended public release; choose Private first if you want a limited reviewer/tester rollout. Unlisted means anyone with the link can access the listing. |
 | Regions | All regions only if you intend worldwide distribution and can support it |
 
-Do not click **Submit for review** until the package, the two captured screenshots, privacy/listing fields, and reviewer access are ready.
+The 0.1.5 Chrome draft was submitted for review on 29 September 2026 with automatic publication after approval. Do not submit a different package or change the listing while that review is pending without rechecking its contents.
 
 ## Test instructions for reviewers
 

@@ -41,7 +41,8 @@ export const test = base.extend<{
 
   // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
-    const pathToExtension = path.resolve(__dirname, '../../../.output/chrome-mv3');
+    const buildTarget = process.env.R22E_BROWSER_CHANNEL === 'msedge' ? 'edge' : 'chrome';
+    const pathToExtension = path.resolve(__dirname, `../../../.output/${buildTarget}-mv3`);
     const context = await chromium.launchPersistentContext('', {
       headless: false,
       channel: process.env.R22E_BROWSER_CHANNEL as 'chrome' | 'msedge' | undefined,

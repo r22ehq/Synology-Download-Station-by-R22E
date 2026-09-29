@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-29
+
+### Fixed
+- Prevented a delayed session-storage read from overwriting a successful login or restoring a session after logout.
+- Added deterministic session-race regression tests and verified the Test connection → Save and connect flow in Chromium and Edge.
+
+## [0.1.6] - 2026-09-29
+
+### Changed
+- Standardized checkbox and radio styling across browser builds while preserving keyboard interaction and system high-contrast controls.
+- Synchronized Chrome, Edge, Firefox, and Opera packages at version 0.1.6.
+
+## [0.1.5] - 2026-09-29
+
+### Added
+- Per-NAS Location preferences, with the Download Station default or a custom destination folder.
+- Speed settings for Download Station limits, with permission checks for non-manager accounts.
+- Six completion sounds with an in-app preview.
+
+### Changed
+- Kept connection setup inside the extension with distinct Local HTTP, Local HTTPS, and QuickConnect choices.
+- Requested NAS access before credential entry, retaining only the address step if a permission prompt closes the popup.
+- Selected Local HTTP by default for new connections, with an explicit unencrypted-network notice.
+- Made the Add dialog destination selector collapsed by default, with an expandable folder browser.
+- Restored the 580 × 520 popup layout and the single-row task filters.
+- Improved cross-context request handling for Location and Speed settings.
+- Kept Firefox's local test folder synchronized with the current production build.
+- Prevented Firefox's default CSP from silently upgrading selected local HTTP connections to HTTPS.
+- Added release checks to exclude private workspace files and test-only permissions from browser packages.
+
 ## [0.1.4] - 2026-09-28
 
 ### Changed

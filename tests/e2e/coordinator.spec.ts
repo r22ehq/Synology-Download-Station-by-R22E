@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/extension';
+import { addMockNasAndConnect } from './fixtures/setup-flow';
 
 test.describe('Refresh Coordinator Runtime Test', () => {
   test('Popup and Side Panel trigger exactly ONE NAS request together', async ({
@@ -24,15 +25,7 @@ test.describe('Refresh Coordinator Runtime Test', () => {
     ];
 
     await gotoPopup(page);
-    await page.getByText('Add NAS').click();
-    await page.getByLabel(/NAS URL/i).fill(mockNas.getUrl());
-    await page.getByLabel(/Username/i).fill('admin');
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Save Profile' }).click();
-
-    await gotoPopup(page);
-    await page.getByPlaceholder('Password').fill('password123');
-    await page.getByRole('button', { name: 'Login' }).click();
+    await addMockNasAndConnect(page, mockNas);
     await expect(page.getByText('Coordinator Task')).toBeVisible({ timeout: 10000 });
 
     // Reset request counts after initial login/setup requests

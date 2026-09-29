@@ -1,0 +1,38 @@
+Control Synology Download Station from your browser.
+
+R22E Station puts your NAS downloads within reach—without switching to DSM every time. Add links and torrent files, watch progress, and manage tasks from a compact browser popup.
+
+► Add downloads in seconds
+Paste a file URL or magnet link, upload a torrent file, or send a downloadable link from the right-click menu. You can also collect download links from the current page.
+
+► Keep track of your tasks
+See download progress, transfer speeds, and task status. Filter tasks by activity or completion, expand task details, and pause, resume, or remove selected downloads.
+
+► Choose where downloads go
+Follow your NAS's Download Station destination by default, or save a custom folder for each NAS profile. Browse folders and override the destination when adding a download.
+
+► Manage transfer limits
+Adjust supported Download Station speed limits from Settings. These are NAS-wide settings and require a manager account; use 0 for unlimited.
+
+► Make it your own
+Choose light or dark mode, customize the accent color, and enable optional browser notifications. Pick from six completion sounds and preview them before saving.
+
+► Connect to your own NAS
+Use Local HTTPS with a certificate your browser trusts. Local HTTP is also available for trusted networks, but it is not encrypted. An experimental QuickConnect-ID option supports direct connections only; it is unofficial and may stop working. QuickConnect relay is not supported.
+
+► Your NAS, your account
+No R22E account is required. Access to your NAS or a selected source site is requested when needed. Saving your NAS password is optional; saved passwords stay in this browser's local extension storage, without extension-level encryption.
+
+WHAT'S NEW IN 0.1.7
+• Fixed an intermittent return to Login Required after Test connection and Save and connect.
+• Prevented delayed session reads from overwriting a new login or restoring a session after logout.
+
+GETTING STARTED
+A compatible Synology NAS, Download Station, and your own NAS account are required. Open the extension, choose Add NAS, enter your DSM address, and connect.
+
+HELP & SOURCE CODE
+Website: https://r22e.com/plugins/r22e-station
+Support: https://r22e.com/contact
+Source and full changelog: https://github.com/r22ehq/Synology-Download-Station-by-R22E
+
+This independent, open-source extension is not affiliated with or endorsed by Synology.

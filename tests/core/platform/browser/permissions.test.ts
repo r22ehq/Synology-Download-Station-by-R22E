@@ -49,4 +49,26 @@ describe('PermissionsManager', () => {
     expect(result).toBe(true);
     expect(browser.permissions.remove).toHaveBeenCalledWith({ origins: ['https://tracker.com/*'] });
   });
+
+  it('requests all selected origins synchronously and deduplicates them', async () => {
+    vi.mocked(browser.permissions.request as () => Promise<boolean>).mockResolvedValue(true);
+    const result = PermissionsManager.requestHostPermissions([
+      'https://tracker.com/first.torrent', 'https://tracker.com/second.torrent',
+      'https://another.example/file.torrent',
+    ]);
+    expect(browser.permissions.request).toHaveBeenCalledWith({ origins: ['https://tracker.com/*', 'https://another.example/*'] });
+    expect(browser.permissions.contains).not.toHaveBeenCalled();
+    expect(await result).toBe(true);
+  });
+
+  it('does not ask for access when no source needs it', async () => {
+    expect(await PermissionsManager.requestHostPermissions([])).toBe(true);
+    expect(browser.permissions.request).not.toHaveBeenCalled();
+  });
+
+  it('keeps existing access when a later context has no click gesture', async () => {
+    vi.mocked(browser.permissions.request).mockRejectedValue(new Error('User gesture required'));
+    vi.mocked(browser.permissions.contains as () => Promise<boolean>).mockResolvedValue(true);
+    expect(await PermissionsManager.requestHostPermissions(['https://tracker.com/first.torrent'])).toBe(true);
+  });
 });
