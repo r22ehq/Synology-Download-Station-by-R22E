@@ -8,7 +8,7 @@
 
 [![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
 
-Chrome is available in the Chrome Web Store. Other browser listings are awaiting approval. Store versions may lag behind [GitHub Releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases); check the version shown before installing.
+Chrome is available in the Chrome Web Store. Other browser listings are awaiting approval.
 
 ## What it does
 
@@ -41,12 +41,12 @@ The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progr
 | --- | --- | --- |
 | Google Chrome | Store listing available; automated UI checks passed in Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp) · [Chrome ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Microsoft Edge | Store review pending; connection-flow checks passed in Edge | [Edge ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
-| Mozilla Firefox | Store review pending; v0.1.5 login tested manually, latest session fix needs native verification | [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Mozilla Firefox | Store review pending; latest session fix needs native verification | [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Opera | Store review pending; latest session fix needs native verification | [Opera ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
 | Safari | Not available | — |
 
-The Chrome Web Store link installs the currently approved Chrome version. ZIP links open the latest GitHub release: choose the asset named for your browser. GitHub releases and store approvals are separate. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
+ZIP links open GitHub Releases: choose the asset named for your browser. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
 
 ## Getting connected
 
