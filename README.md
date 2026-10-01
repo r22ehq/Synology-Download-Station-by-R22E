@@ -7,8 +7,9 @@
 [Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
 [![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
+[![Install from Microsoft Edge Add-ons](https://img.shields.io/badge/Install_from-Microsoft_Edge_Add--ons-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom)
 
-Chrome is available in the Chrome Web Store. Other browser listings are awaiting approval.
+Chrome and Edge are available in their browser stores. Other browser listings are awaiting approval.
 
 ## What it does
 
@@ -40,7 +41,7 @@ The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progr
 | Browser | Availability and testing | Install / package |
 | --- | --- | --- |
 | Google Chrome | Store listing available; automated UI checks passed in Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp) · [Chrome ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
-| Microsoft Edge | Store review pending; connection-flow checks passed in Edge | [Edge ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Microsoft Edge | Store listing available; connection-flow checks passed in Edge | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom) · [Edge ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Mozilla Firefox | Store review pending; latest session fix needs native verification | [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Opera | Store review pending; latest session fix needs native verification | [Opera ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
