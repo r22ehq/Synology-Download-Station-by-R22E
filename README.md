@@ -6,10 +6,11 @@
 
 [Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
-[![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
+[![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-FBBC05?style=for-the-badge&logo=googlechrome&logoColor=black)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
 [![Install from Microsoft Edge Add-ons](https://img.shields.io/badge/Install_from-Microsoft_Edge_Add--ons-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom)
+[![Install for Firefox and Zen](https://img.shields.io/badge/Install_for-Firefox_%26_Zen-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/r22e-station/)
 
-Chrome and Edge are available in their browser stores. Other browser listings are awaiting approval.
+Chrome, Edge, and Firefox are available in their browser stores. Zen uses the Firefox Add-ons listing. Opera's store listing is still pending; its package is available on GitHub Releases. Safari is not available.
 
 ## What it does
 
@@ -42,12 +43,15 @@ The [compact side-panel view](docs/media/tasks-compact-880x1520.jpg) keeps progr
 | --- | --- | --- |
 | Google Chrome | Store listing available; automated UI checks passed in Chromium | [Chrome Web Store](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp) · [Chrome ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Microsoft Edge | Store listing available; connection-flow checks passed in Edge | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom) · [Edge ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
-| Mozilla Firefox | Store review pending; latest session fix needs native verification | [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Mozilla Firefox | Store listing available; latest session fix needs native verification | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/r22e-station/) · [Firefox ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
+| Zen | Uses the Firefox listing; native Zen QA pending | [Firefox Add-ons for Zen](https://addons.mozilla.org/en-US/firefox/addon/r22e-station/) |
 | Opera | Store review pending; latest session fix needs native verification | [Opera ZIP](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases/latest) |
 | Arc | Chromium compatibility expected; manual QA pending | [Chrome builds](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) |
 | Safari | Not available | — |
 
 ZIP links open GitHub Releases: choose the asset named for your browser. For source builds and unpacked installation, see [Contributing](CONTRIBUTING.md).
+
+Store approval does not mean every browser-specific feature has been independently tested. Store versions and GitHub releases may differ; check the listing or release version before installing.
 
 ## Getting connected
 
