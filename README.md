@@ -2,6 +2,8 @@
 
 **Synology Download Station by R22E** — manage downloads on your own NAS without leaving the browser.
 
+[![OpenSSF Best Practices: Passing](https://www.bestpractices.dev/projects/15227/badge)](https://www.bestpractices.dev/en/projects/15227)
+
 ![R22E Station demo: downloading, completed, and paused tasks](docs/media/r22e-station-demo.gif)
 
 [Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
