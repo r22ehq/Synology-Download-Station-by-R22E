@@ -6,6 +6,8 @@
 
 [Product page](https://r22e.com/plugins/r22e-station) · [GitHub releases](https://github.com/r22ehq/Synology-Download-Station-by-R22E/releases) · [Privacy policy](PRIVACY.md) · [Report a bug](https://github.com/r22ehq/Synology-Download-Station-by-R22E/issues/new)
 
+[User guide](docs/user-guide.md) covers connection inputs, download options, task information, settings, and troubleshooting.
+
 [![Install from Chrome Web Store](https://img.shields.io/badge/Install_from-Chrome_Web_Store-FBBC05?style=for-the-badge&logo=googlechrome&logoColor=black)](https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp)
 [![Install from Microsoft Edge Add-ons](https://img.shields.io/badge/Install_from-Microsoft_Edge_Add--ons-0078D7?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom)
 [![Install for Firefox and Zen](https://img.shields.io/badge/Install_for-Firefox_%26_Zen-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/r22e-station/)
