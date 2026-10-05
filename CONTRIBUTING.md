@@ -34,6 +34,8 @@ Key directories:
 
 ## Quality Gates
 
+Major new functionality must include new or updated automated tests that exercise its expected behavior and important failure cases. Add unit or integration tests where practical, and include browser interaction tests when the feature changes a user-facing flow. A pull request should explain any behavior that cannot be tested automatically.
+
 Before opening a pull request, ensure all checks pass locally:
 
 ```bash
