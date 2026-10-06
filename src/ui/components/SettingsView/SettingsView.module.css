@@ -34,12 +34,14 @@
 .aboutIdentity > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .aboutIdentity strong { font-size: 16px; }
 .aboutIdentity span { color: var(--color-text-muted); font-size: var(--font-size-sm); }
+.aboutIdentity a { color: var(--color-primary); text-decoration: none; }
+.aboutIdentity a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .linkActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .linkActions a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-primary); text-decoration: none; font-size: var(--font-size-sm); font-weight: 600; }
 .linkActions a:hover { background: var(--color-selected); }
 .storeList { display: flex; flex-direction: column; margin-top: 12px; }
-.storeList > span { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--color-border); font-size: var(--font-size-sm); }
-.storeList small { color: var(--color-text-muted); }
+.storeList > a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--color-border); color: var(--color-primary); text-decoration: none; font-size: var(--font-size-sm); }
+.storeList > a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .formCard { display: flex; flex-direction: column; gap: 16px; max-width: 620px; padding: 22px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-1); box-shadow: var(--shadow-md); }
 .connectionMethods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .connectionMethods legend { margin-bottom: 8px; font-size: var(--font-size-sm); font-weight: 600; }
@@ -66,6 +68,10 @@
 .saveOption input { flex: 0 0 16px; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--color-primary); }
 .saveOption span { display: flex; flex-direction: column; gap: 3px; }
 .saveOption small { color: var(--color-text-secondary); line-height: 1.4; }
+.saveOption .optionTitle { display: inline-flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px; }
+.recommended { padding: 2px 6px; border-radius: 999px; color: var(--color-success-text); background: var(--color-success-subtle); font-size: var(--font-size-xs); line-height: 1.25; }
+.saveOption .optionInfo { display: flex; flex-direction: row; align-items: flex-start; gap: 5px; }
+.optionInfo svg { flex: 0 0 auto; margin-top: 2px; }
 .connectionHint { margin-top: -8px; color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.45; }
 .connectionHint strong { color: var(--color-text-primary); }
 .certificateLink { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }

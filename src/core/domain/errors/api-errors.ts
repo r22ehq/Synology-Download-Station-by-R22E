@@ -18,7 +18,7 @@ export class AuthenticationError extends SynoApiError {
 }
 
 export class SessionExpiredError extends SynoApiError {
-  constructor(message: string = 'Session expired', code: number = 105, apiName?: string) {
+  constructor(message: string = 'Session expired', code: number = 106, apiName?: string) {
     super(message, code, apiName);
     this.name = 'SessionExpiredError';
   }
@@ -36,7 +36,7 @@ export class TwoFactorRequiredError extends SynoApiError {
 }
 
 export class PermissionDeniedError extends SynoApiError {
-  constructor(message: string = 'Permission denied', code: number = 106, apiName?: string) {
+  constructor(message: string = 'Permission denied', code: number = 105, apiName?: string) {
     super(message, code, apiName);
     this.name = 'PermissionDeniedError';
   }
@@ -65,9 +65,12 @@ export class ConnectionError extends Error {
 
 export const translateSynoError = (code: number, apiName?: string): SynoApiError => {
   switch (code) {
-    case 105:
+    case 106:
+    case 107:
     case 119:
       return new SessionExpiredError(`Session expired or invalid (Code: ${code})`, code, apiName);
+    case 105:
+      return new PermissionDeniedError(`Session lacks permission (Code: ${code})`, code, apiName);
     case 400:
       return new AuthenticationError(`Invalid credentials (Code: ${code})`, code, apiName);
     case 401:
@@ -80,8 +83,6 @@ export const translateSynoError = (code: number, apiName?: string): SynoApiError
         code,
         apiName,
       );
-    case 106:
-      return new PermissionDeniedError(`Insufficient privileges (Code: ${code})`, code, apiName);
     default:
       return new SynoApiError(`Unknown API Error (Code: ${code})`, code, apiName);
   }

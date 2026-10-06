@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { Bell, Database, ExternalLink, Folder, Gauge, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
+import { Bell, CircleAlert, Database, ExternalLink, Folder, Gauge, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
 import { Button } from '../Button/Button';
 import { Input } from '../Input/Input';
 import { PasswordInput } from '../Input/PasswordInput';
@@ -41,6 +41,10 @@ const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
 ];
 
 const projectUrl = 'https://github.com/r22ehq/Synology-Download-Station-by-R22E';
+const websiteUrl = 'https://r22e.com';
+const chromeStoreUrl = 'https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp';
+const edgeStoreUrl = 'https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom';
+const firefoxStoreUrl = 'https://addons.mozilla.org/en-US/firefox/addon/r22e-station/';
 const certificateHelpUrl = 'https://kb.synology.com/en-my/DSM/tutorial/Why_did_I_see_a_not_secure_warning_in_the_browser_when_connecting_to_my_Synology_product';
 
 const displayUrl = (profile: { protocol: string; host: string; port: number }) => `${profile.protocol}://${profile.host}:${profile.port}`;
@@ -370,7 +374,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
           <PasswordInput id="nas-password" label="Password" disabled={!canEnterCredentials} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder="Password" />
           {waitingFor2fa && <Input id="nas-otp" label="Verification code" value={otpCode} onInput={event => setOtpCode(event.currentTarget.value)} inputMode="numeric" autocomplete="one-time-code" placeholder="Verification code" />}
           <label className={styles.saveOption}><input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.currentTarget.checked)} /><span>Remember this device <small>Keep the NAS session and device token in this browser.</small></span></label>
-          <label className={styles.saveOption}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span>Save password on this device <small>Optional. Stored locally in this browser; never synced or exported.</small></span></label>
+          <label className={styles.saveOption}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span><span className={styles.optionTitle}>Save password on this device <strong className={styles.recommended}>Recommended</strong></span><small className={styles.optionInfo}><CircleAlert size={13} aria-hidden="true" />Allows automatic sign-in when your NAS expires the session. Two-step verification may still be required. Stored only in this browser.</small></span></label>
           {testResult && <div className={testResult.success ? styles.success : styles.error} role="status">{testResult.msg}</div>}
           <div className={styles.actions}>
             <Button variant="ghost" size="sm" onClick={cancelSetup}>Cancel</Button>
@@ -427,7 +431,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
     about: <>
       <div className={styles.pageHeading}><div><h2>About R22E Station</h2><p>A browser companion for Synology Download Station.</p></div></div>
       <div className={styles.infoCard}>
-        <div className={styles.aboutIdentity}><img src="/icon-48.png" width="40" height="40" alt="" /><div><strong>Synology Download Station by R22E</strong><span>Version {browser.runtime.getManifest().version} · Developed by R22E Studio</span></div></div>
+        <div className={styles.aboutIdentity}><img src="/icon-48.png" width="40" height="40" alt="" /><div><strong>Synology Download Station by R22E</strong><span>Version {browser.runtime.getManifest().version} · <a href={websiteUrl} target="_blank" rel="noopener noreferrer">Made with love by R22E</a></span></div></div>
         <p>Manage NAS download tasks from your browser, send links and task files to Download Station, and keep an eye on progress. This independent open-source project is not affiliated with Synology.</p>
       </div>
       <div className={styles.infoCard}>
@@ -437,8 +441,8 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
       </div>
       <div className={styles.infoCard}>
         <h3>Availability</h3>
-        <p>Store listings will be linked here after this extension is published. Until then, use a test build from this project.</p>
-        <div className={styles.storeList}><span>Chrome Web Store <small>Coming soon</small></span><span>Microsoft Edge Add-ons <small>Coming soon</small></span><span>Firefox Add-ons <small>Coming soon</small></span></div>
+        <p>Install R22E Station from your browser's official add-on store.</p>
+        <div className={styles.storeList}><a href={chromeStoreUrl} target="_blank" rel="noopener noreferrer">Chrome Web Store <ExternalLink size={14} aria-hidden="true" /></a><a href={edgeStoreUrl} target="_blank" rel="noopener noreferrer">Microsoft Edge Add-ons <ExternalLink size={14} aria-hidden="true" /></a><a href={firefoxStoreUrl} target="_blank" rel="noopener noreferrer">Firefox Add-ons <ExternalLink size={14} aria-hidden="true" /></a></div>
       </div>
       <div className={styles.infoCard}>
         <h3>License & privacy</h3>

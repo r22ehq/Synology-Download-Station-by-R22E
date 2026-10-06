@@ -1,6 +1,6 @@
 # Firefox reviewer build instructions
 
-This source archive builds Synology Download Station by R22E version 0.1.7 for Firefox. It contains the original TypeScript, Preact, CSS, and static assets used to produce the extension ZIP.
+This source archive builds Synology Download Station by R22E version 0.1.8 for Firefox. It contains the original TypeScript, Preact, CSS, and static assets used to produce the extension ZIP.
 
 Requirements: Node.js 22 or newer and pnpm 9.15.4 (via Corepack). The build uses open-source dependencies from the public npm registry. No credentials, environment file, network service, or NAS is needed. Do not set `R22E_E2E`; that variable is reserved for local automated testing and changes the manifest.
 

@@ -40,6 +40,9 @@ describe('Connection setup permission step', () => {
 
   it('defaults to HTTP and requests access before credentials, never during Test', async () => {
     await openSetup();
+    const savePassword = screen.getByRole('checkbox', { name: /Save password on this device/ });
+    expect(savePassword.closest('label')?.textContent).toContain('Recommended');
+    expect(savePassword.closest('label')?.textContent).toContain('automatic sign-in when your NAS expires the session');
     expect(screen.getByRole('button', { name: /Local HTTP\s*Port 5000/ }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.input(screen.getByLabelText('NAS address'), { target: { value: 'http://nas.test:5000' } });
     await waitFor(() => expect(draft).toHaveProperty('nasSetupAddress'));

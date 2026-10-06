@@ -83,6 +83,50 @@ test.describe('Authentication flows', () => {
     await expect(page.getByRole('status')).toContainText('Incorrect username or password.');
   });
 
+  test('silently renews a rejected NAS session when the password was saved', async ({ page, gotoPopup, mockNas }) => {
+    await gotoPopup(page);
+    await page.getByText('Add NAS').click();
+    await page.getByRole('button', { name: /Local HTTP Port 5000/ }).click();
+    await page.getByLabel(/^NAS address$/i).fill(mockNas.getUrl());
+    await expect(page.getByLabel('Username', { exact: true })).toBeEnabled();
+    await page.getByLabel('Username', { exact: true }).fill('admin');
+    await page.getByLabel('Password', { exact: true }).fill('password123');
+    await page.getByRole('checkbox', { name: /Save password on this device/ }).check();
+    await page.getByRole('button', { name: 'Save and connect' }).click();
+    await expect(page.getByPlaceholder(/Paste URL/i)).toBeVisible();
+    const savedAuth = await page.evaluate(async () => {
+      const values = await chrome.storage.local.get(null);
+      return {
+        savedPassword: typeof values[`savedPassword_${values.activeProfileId}`] === 'string',
+        suppressed: values[`autoLoginSuppressed_${values.activeProfileId}`],
+      };
+    });
+    expect(savedAuth).toEqual({ savedPassword: true, suppressed: false });
+
+    const loginsBefore = mockNas.requestCounts['SYNO.API.Auth'] || 0;
+    mockNas.state.taskListErrorUntilLogin = 105;
+    await page.getByRole('button', { name: 'Refresh tasks' }).click();
+
+    await expect.poll(() => mockNas.requestCounts['SYNO.API.Auth'] || 0).toBeGreaterThan(loginsBefore);
+    await expect(page.getByPlaceholder(/Paste URL/i)).toBeVisible();
+    await expect(page.getByText('Login Required')).not.toBeVisible();
+    await expect(page.getByText('Synology API Error: 105')).not.toBeVisible();
+  });
+
+  test('asks for a new login after a rejected NAS session without a saved password', async ({ page, gotoPopup, mockNas }) => {
+    await gotoPopup(page);
+    await addMockNasAndConnect(page, mockNas);
+    await expect(page.getByPlaceholder(/Paste URL/i)).toBeVisible();
+
+    const loginsBefore = mockNas.requestCounts['SYNO.API.Auth'] || 0;
+    mockNas.state.taskListErrorUntilLogin = 105;
+    await page.getByRole('button', { name: 'Refresh tasks' }).click();
+
+    await expect(page.getByText('Login Required')).toBeVisible();
+    expect(mockNas.requestCounts['SYNO.API.Auth'] || 0).toBe(loginsBefore);
+    await expect(page.getByText('Synology API Error: 105')).not.toBeVisible();
+  });
+
   test('restores a remembered session and uses an opt-in saved password after restart', async ({ page, context, gotoPopup, mockNas }) => {
     let appPage = page;
     mockNas.state.authStatus = 'SUCCESS';

@@ -104,3 +104,7 @@
 .checkRow input { flex: 0 0 16px; width: 16px; height: 16px; margin-top: 3px; accent-color: var(--color-primary); cursor: pointer; }
 .checkRow span { display: flex; flex-direction: column; gap: 3px; }
 .checkRow small { color: var(--color-text-muted); line-height: 1.35; }
+.checkRow .optionTitle { display: inline-flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px; }
+.recommended { padding: 2px 6px; border-radius: 999px; color: var(--color-success-text); background: var(--color-success-subtle); font-size: var(--font-size-xs); line-height: 1.25; }
+.checkRow .optionInfo { display: flex; flex-direction: row; align-items: flex-start; gap: 5px; }
+.optionInfo svg { flex: 0 0 auto; margin-top: 2px; }

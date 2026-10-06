@@ -80,6 +80,25 @@ test.describe('Download preferences and file upload', () => {
     await page.screenshot({ path: path.join(tmpdir(), 'r22e-015-speed.png') });
   });
 
+  test('keeps the Settings frame stable while switching between Location and Speed', async ({ page }) => {
+    await page.getByTitle('Settings').click();
+    const shell = page.locator('[class*="surface_popup"]');
+    const settings = page.locator('[class*="settingsLayout"]');
+    const initialShell = await shell.boundingBox();
+    const initialSettings = await settings.boundingBox();
+
+    await page.getByRole('button', { name: 'Location', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Select downloads' })).toBeVisible();
+    const locationSettings = await settings.boundingBox();
+    await page.getByRole('button', { name: 'Speed', exact: true }).click();
+    await expect(page.getByLabel('BitTorrent upload (KB/s)')).toBeVisible();
+    const speedSettings = await settings.boundingBox();
+
+    expect(await shell.boundingBox()).toEqual(initialShell);
+    expect(locationSettings).toEqual(initialSettings);
+    expect(speedSettings).toEqual(initialSettings);
+  });
+
   test('does not allow a non-manager to edit speed limits', async ({ page, mockNas }) => {
     mockNas.state.isManager = false;
     await page.getByTitle('Settings').click();

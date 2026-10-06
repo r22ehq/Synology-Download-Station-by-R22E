@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { Plus, Search, X } from 'lucide-preact';
+import { CircleAlert, Plus, Search, X } from 'lucide-preact';
 import type { DownloadTask } from '@/core/synology/download-station/types';
 import { sendMessage } from '@/core/platform/messaging/message-contracts';
 import { sessionDataStorage, taskSnapshotStorage } from '@/core/platform/storage/storage-items';
@@ -26,6 +26,7 @@ interface AppShellProps {
 }
 
 const toErrorMessage = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong.';
+const authenticationRequiredMessage = 'Your NAS session ended. Log in again. To reconnect automatically next time, enable Save password on this device.';
 
 export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellProps) {
   const openAddNas = () => {
@@ -96,8 +97,10 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
     setTasks(snapshot.tasks || []);
     setStats(snapshot.stats || { speedDownload: 0, speedUpload: 0 });
     if (snapshot.error) {
-      setMessage({ tone: 'error', text: snapshot.error });
+      setMessage({ tone: 'error', text: snapshot.error === 'Authentication required' ? authenticationRequiredMessage : snapshot.error });
       if (snapshot.error === 'Authentication required') setAuthStatus('disconnected');
+    } else {
+      setMessage(current => current?.text === authenticationRequiredMessage ? null : current);
     }
   }), []);
 
@@ -137,7 +140,10 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
         setSavePassword(Boolean(result.savedPassword));
         setHasSavedPassword(Boolean(result.savedPassword));
         setAuthStatus(authenticated ? 'authenticated' : 'disconnected');
-        if (authenticated) refresh();
+        if (authenticated) {
+          setMessage(current => current?.text === authenticationRequiredMessage ? null : current);
+          refresh();
+        }
       }).catch(error => {
         if (!active || request !== authCheck) return;
         setAuthStatus('disconnected');
@@ -283,7 +289,7 @@ export function AppShell({ surface = 'popup', initialView = 'main' }: AppShellPr
       <PasswordInput id="nas-password" label="Password" helperText={hasSavedPassword ? 'A password is saved on this device. Leave this blank to use it.' : 'Used to sign in. Saved locally only if you choose below.'} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder={hasSavedPassword ? 'Saved on this device' : 'Password'} />
       {waitingFor2fa && <Input id="nas-otp" label="Verification code" value={otpCode} onInput={event => setOtpCode(event.currentTarget.value)} inputMode="numeric" autocomplete="one-time-code" placeholder="Verification Code" />}
       <label className={styles.checkRow}><input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.currentTarget.checked)} /><span>Remember this device <small>Keeps the NAS session and device token locally. The NAS can still expire a session.</small></span></label>
-      <label className={styles.checkRow}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span>Save password on this device <small>Allows automatic sign-in after the session expires. Stored in this browser only; never synced or exported.</small></span></label>
+      <label className={styles.checkRow}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span><span className={styles.optionTitle}>Save password on this device <strong className={styles.recommended}>Recommended</strong></span><small className={styles.optionInfo}><CircleAlert size={13} aria-hidden="true" />Allows automatic sign-in when your NAS expires the session. Two-step verification may still be required. Stored only in this browser.</small></span></label>
       <Button onClick={login} isLoading={isBusy}>{waitingFor2fa ? 'Verify' : 'Login'}</Button>
     </section>
   ) : (

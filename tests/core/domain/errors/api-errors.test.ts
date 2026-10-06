@@ -14,9 +14,9 @@ import {
 } from '@/core/domain/errors/api-errors';
 
 describe('translateSynoError', () => {
-  it('returns SessionExpiredError for code 105', () => {
+  it('returns PermissionDeniedError for code 105', () => {
     const err = translateSynoError(105);
-    expect(err).toBeInstanceOf(SessionExpiredError);
+    expect(err).toBeInstanceOf(PermissionDeniedError);
     expect(err.code).toBe(105);
   });
 
@@ -40,9 +40,9 @@ describe('translateSynoError', () => {
     expect(err).toBeInstanceOf(TwoFactorRequiredError);
   });
 
-  it('returns PermissionDeniedError for code 106', () => {
+  it('returns SessionExpiredError for code 106', () => {
     const err = translateSynoError(106);
-    expect(err).toBeInstanceOf(PermissionDeniedError);
+    expect(err).toBeInstanceOf(SessionExpiredError);
   });
 
   it('returns SynoApiError for unknown codes', () => {

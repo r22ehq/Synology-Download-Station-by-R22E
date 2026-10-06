@@ -34,7 +34,7 @@ import { ApiRegistry } from '@/core/synology/api-discovery/api-registry';
 import type { DownloadTask } from '@/core/synology/download-station/types';
 import { taskTracker } from '@/core/platform/browser/task-tracker';
 import { connectionManager } from '@/core/domain/connection/connection-manager';
-import { InvalidCredentialsError, InvalidSessionError, mapSynologyError, SessionExpiredError, SessionReplacedError, SourceIpMismatchError } from '@/core/domain/errors/synology-errors';
+import { InvalidCredentialsError, InvalidSessionError, mapSynologyError, SessionExpiredError, SessionPermissionDeniedError, SessionReplacedError, SourceIpMismatchError } from '@/core/domain/errors/synology-errors';
 
 // Attempt to lock down storage to trusted extension contexts only
 restrictStorageToTrustedContexts().catch(() => {});
@@ -94,14 +94,17 @@ export default defineBackground(() => {
   };
 
   const clearInvalidSession = async (profileId: string) => {
+    connectionManager.stateMachine.expireSession();
     sessionManager.clearSession(profileId);
     await sessionDataStorage.setValue(sessionManager.toRecord());
     await getRememberedSessionStorageItem(profileId).removeValue();
   };
 
-  const isExpiredSession = (error: unknown) => {
+  const isRecoverableSessionError = (error: unknown) => {
     const mapped = mapSynologyError(error);
-    return mapped instanceof SessionExpiredError || mapped instanceof SessionReplacedError || mapped instanceof InvalidSessionError || mapped instanceof SourceIpMismatchError;
+    // DSM can also reject a previously accepted SID with 105. Retry a fresh
+    // login once; if the new SID also gets 105, it is a real privilege error.
+    return mapped instanceof SessionExpiredError || mapped instanceof SessionReplacedError || mapped instanceof InvalidSessionError || mapped instanceof SourceIpMismatchError || mapped instanceof SessionPermissionDeniedError;
   };
   const isWaitingFor2fa = () => connectionManager.stateMachine.state === 'waiting-for-2fa';
 
@@ -152,7 +155,7 @@ export default defineBackground(() => {
       try {
         await create();
       } catch (error) {
-        if (!isExpiredSession(error)) throw error;
+        if (!isRecoverableSessionError(error)) throw error;
         const profileId = await activeProfileIdStorage.getValue();
         if (!profileId) throw error;
         await clearInvalidSession(profileId);
@@ -371,7 +374,7 @@ export default defineBackground(() => {
     try {
       res = await fetchTasks();
     } catch (error) {
-      if (!isExpiredSession(error)) throw error;
+      if (!isRecoverableSessionError(error)) throw error;
       await clearInvalidSession(profileId);
       if (!await reconnectWithSavedPassword(profileId)) {
         currentStatsCache = { speedDownload: 0, speedUpload: 0 };
@@ -388,7 +391,14 @@ export default defineBackground(() => {
       }
       sid = sessionManager.getSid(profileId);
       synoToken = sessionManager.getSynoToken(profileId);
-      res = await fetchTasks();
+      try {
+        res = await fetchTasks();
+      } catch (retryError) {
+        if (mapSynologyError(retryError) instanceof SessionPermissionDeniedError) {
+          throw new Error('Your NAS account cannot access Download Station. Check its application privileges in DSM.', { cause: retryError });
+        }
+        throw retryError;
+      }
     }
 
     const activeCount = res.tasks.filter((t: DownloadTask) => ['waiting', 'downloading', 'extracting', 'hash_checking'].includes(t.status)).length;
