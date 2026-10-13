@@ -1,12 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AlarmScheduler } from '../../../../src/core/platform/scheduler/alarm-scheduler';
 
+interface BrowserAlarmTestApi {
+  alarms: {
+    create: ReturnType<typeof vi.fn>;
+    clear: ReturnType<typeof vi.fn>;
+    onAlarm: {
+      addListener: ReturnType<typeof vi.fn>;
+    };
+  };
+}
+
 describe('AlarmScheduler', () => {
   let scheduler: AlarmScheduler;
+  let browserMock: BrowserAlarmTestApi;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.stubGlobal('browser', {
+    browserMock = {
       alarms: {
         create: vi.fn(),
         clear: vi.fn().mockResolvedValue(undefined),
@@ -14,7 +25,8 @@ describe('AlarmScheduler', () => {
           addListener: vi.fn(),
         },
       },
-    });
+    };
+    vi.stubGlobal('browser', browserMock);
     scheduler = new AlarmScheduler();
   });
 
@@ -26,14 +38,14 @@ describe('AlarmScheduler', () => {
 
   it('adjusts polling interval for popup active state (3000ms)', () => {
     scheduler.setAdaptiveInterval('popup', true);
-    expect((globalThis as any).browser.alarms.create).not.toHaveBeenCalled();
+    expect(browserMock.alarms.create).not.toHaveBeenCalled();
     // It should use setInterval for popup
     expect(vi.getTimerCount()).toBe(1);
   });
 
   it('adjusts polling interval for background active state', () => {
     scheduler.setAdaptiveInterval('background', true);
-    expect((globalThis as any).browser.alarms.create).toHaveBeenCalledWith('r22e-poll', {
+    expect(browserMock.alarms.create).toHaveBeenCalledWith('r22e-poll', {
       periodInMinutes: Math.max(30000 / 60000, 0.5),
     });
     expect(vi.getTimerCount()).toBe(0);
@@ -46,7 +58,7 @@ describe('AlarmScheduler', () => {
     scheduler.setAdaptiveInterval('background', false);
     expect(vi.getTimerCount()).toBe(0); // Interval should be cleared
     // backgroundIdle interval is 0, so no alarm is created
-    expect((globalThis as any).browser.alarms.create).not.toHaveBeenCalled();
+    expect(browserMock.alarms.create).not.toHaveBeenCalled();
   });
 
   it('coalesces UI connections by only running one polling timer', () => {

@@ -24,9 +24,13 @@ describe('TaskClient (Upload)', () => {
     await taskClient.create('http://nas', registry, 'sid-123', { file, destination: '/downloads' });
     
     expect(postSpy).toHaveBeenCalled();
-    const config = postSpy.mock.calls[0]?.[2] as any;
+    const config = postSpy.mock.calls[0]?.[2];
     expect(config).toBeInstanceOf(FormData);
-    expect(config.get('file').name).toBe('ubuntu.torrent');
+    if (!(config instanceof FormData)) throw new Error('Expected FormData upload body');
+    const uploadedFile = config.get('file');
+    expect(uploadedFile).toBeInstanceOf(File);
+    if (!(uploadedFile instanceof File)) throw new Error('Expected uploaded file');
+    expect(uploadedFile.name).toBe('ubuntu.torrent');
     expect(config.get('destination')).toBe('/downloads');
   });
 

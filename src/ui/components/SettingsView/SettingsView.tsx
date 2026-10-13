@@ -57,6 +57,29 @@ const endpointCandidates = (value: string, defaultProtocol: 'http' | 'https' = '
   return [`${defaultProtocol}://${trimmed}:${defaultProtocol === 'https' ? 5001 : 5000}`];
 };
 
+const parseLocalAddress = (value: string, protocol: 'http' | 'https') => {
+  const candidate = endpointCandidates(value, protocol)[0]!;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error('Enter a complete NAS address, such as 192.168.1.10.');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    throw new Error('Enter only the NAS address and optional port, without a path or sign-in details.');
+  }
+  const rawHost = candidate.replace(/^https?:\/\//i, '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  if (/^[\d.]+$/.test(rawHost)) {
+    const octets = rawHost.split('.');
+    if (octets.length !== 4 || octets.some(octet => !/^(0|[1-9]\d{0,2})$/.test(octet) || Number(octet) > 255)) {
+      throw new Error('Enter a complete IP address with four numbers from 0 to 255.');
+    }
+  }
+  const normalized = normalizeNasUrl(candidate);
+  if (normalized.protocol !== protocol) throw new Error('Choose the matching Local HTTP or Local HTTPS option.');
+  return normalized;
+};
+
 const isHttpsIpAddress = (value: string, defaultProtocol: 'http' | 'https') => {
   try {
     const { protocol, host } = normalizeNasUrl(endpointCandidates(value, defaultProtocol)[0]!);
@@ -84,6 +107,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   const pendingProfile = useRef<{ id: string; endpoint: string; username: string } | null>(null);
   const previousActiveProfileId = useRef<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
+  const [addressError, setAddressError] = useState('');
   const [permissionKey, setPermissionKey] = useState('');
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const [quickConnectRoutes, setQuickConnectRoutes] = useState<{ id: string; urls: string[] } | null>(null);
@@ -93,7 +117,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   let accessUrls: string[] = [];
   try {
     accessUrls = connectionType === 'local'
-      ? (hasAddress(url) ? [normalizeNasUrl(endpointCandidates(url, localProtocol)[0]!).baseUrl] : [])
+      ? (hasAddress(url) ? [parseLocalAddress(url, localProtocol).baseUrl] : [])
       : (quickConnectRoutes?.id === quickConnectId.trim() ? quickConnectRoutes.urls : []);
   } catch { /* An incomplete address cannot request access. */ }
   const accessKey = JSON.stringify(accessUrls);
@@ -134,15 +158,27 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   const httpsIpAddress = connectionType === 'local' && isHttpsIpAddress(url, localProtocol);
   const quickConnectAddress = connectionType === 'local' && /(?:^|\.)direct\.quickconnect\.to(?::\d+)?(?:\/|$)/i.test(url.trim().replace(/^https?:\/\//i, ''));
   const usesHttp = connectionType === 'local' && localProtocol === 'http';
-  const hasNasAddress = url.trim().replace(/^https?:\/\//i, '').trim().length > 0;
+  const hasNasAddress = accessUrls.length > 0;
 
   const updateNasAddress = (value: string) => {
     addressEdited.current = true;
     setPermissionKey('');
     setUrl(value);
+    setAddressError('');
     if (/^http:\/\//i.test(value)) setLocalProtocol('http');
     else if (/^https:\/\//i.test(value)) setLocalProtocol('https');
     setTestResult(null);
+  };
+
+  const finishNasAddress = () => {
+    if (!hasAddress(url)) return;
+    try {
+      const normalized = parseLocalAddress(url, localProtocol);
+      setUrl(normalized.baseUrl);
+      setAddressError('');
+    } catch (error) {
+      setAddressError(error instanceof Error ? error.message : 'Enter a valid NAS address.');
+    }
   };
 
   const selectLocalProtocol = (protocol: 'http' | 'https') => {
@@ -356,7 +392,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
                 <button type="button" aria-pressed={usesHttp} className={usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('http')}><strong>Local HTTP</strong><small>Port 5000 · not encrypted</small></button>
                 <button type="button" aria-pressed={!usesHttp} className={!usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('https')}><strong>Local HTTPS</strong><small>Port 5001 · valid certificate required</small></button>
               </div>
-              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} placeholder={usesHttp ? 'http://192.168.0.81:5000' : 'https://your-nas.example.com:5001'} />
+              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} onBlur={finishNasAddress} error={addressError} placeholder={usesHttp ? 'http://000.000.000.000:5000' : 'https://your-nas.example.com:5001'} />
               <div className={styles.connectionHint}>
                 {usesHttp
                   ? <span>Not encrypted. Use only on a trusted local network.</span>

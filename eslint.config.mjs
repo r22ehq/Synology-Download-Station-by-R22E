@@ -64,5 +64,12 @@ export default tseslint.config(
   {
     files: ['scripts/**/*.mjs', 'tests/**/*.ts', 'tests/**/*.tsx'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['scripts/**/*.mjs', 'tests/e2e/**/*.ts'],
+    rules: {
+      // CLI utilities and e2e fixtures intentionally emit operator-facing progress.
+      'no-console': 'off',
+    },
   }
 );

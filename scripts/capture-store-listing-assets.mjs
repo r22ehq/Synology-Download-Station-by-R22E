@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MockNasServer } from '../tests/e2e/fixtures/mock-server.ts';
+import { smallPromoMarkup } from './render-small-promo.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extensionPath = path.join(root, '.output/chrome-mv3');
@@ -108,25 +109,7 @@ try {
     await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map(img => img.decode())); });
     await page.screenshot({ path: path.join(mediaPath, name), type: 'jpeg', quality: 95, animations: 'disabled', scale: 'css' });
   };
-  await promo(440, 280, 'store-small-promo-440x280.jpg', `
-    <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0758ef,#0866fb 72%,#1675ff)"></div>
-    <svg style="position:absolute;right:0;top:12px;opacity:.65" width="130" height="63" viewBox="0 0 130 63" aria-hidden="true"><path fill="#83b7ff" d="M0 57c17-2 24-9 34-9 12 0 14-12 26-12 13 0 17-15 30-15 14 0 15-15 31-15 4 0 7 1 9 2v55H0z"/></svg>
-    <svg style="position:absolute;left:0;bottom:0;opacity:.48" width="94" height="48" viewBox="0 0 94 48" aria-hidden="true"><path fill="#a2caff" d="M0 7c18 0 18 17 34 17 12 0 16 9 29 9 11 0 15 7 31 7v8H0z"/></svg>
-    <div style="position:absolute;left:23px;top:54px;width:203px;display:flex;flex-direction:column;align-items:center;text-align:center;z-index:2">
-      <img src="${iconUrl}" width="91" height="91" style="border-radius:21px">
-      <div style="color:#c8e6ff;font-size:23px;font-weight:850;letter-spacing:-.025em;line-height:1.05;margin-top:22px">R22E Station</div>
-    </div>
-    <div style="position:absolute;left:234px;top:68px;width:242px;height:235px;padding:12px 11px;background:#171d28;border:2px solid #b7d8ff;border-radius:14px;box-shadow:-14px 16px 32px #0035958a;transform:rotate(-6deg);color:#f7f9ff">
-      <div style="display:flex;align-items:center;gap:7px;height:27px;border-bottom:1px solid #35404e;padding-bottom:9px">
-        <img src="${iconUrl}" width="22" height="22" style="border-radius:5px"><strong style="font-size:13px;white-space:nowrap">R22E Station</strong><span style="color:#58df93;font-size:8px;margin-left:auto">●</span>
-      </div>
-      <div style="display:flex;gap:5px;margin-top:11px"><div style="height:27px;flex:1;border:1px solid #3a4655;border-radius:7px;color:#8290a5;font-size:9px;padding:7px 8px;white-space:nowrap">Paste URL or magnet...</div><div style="background:#357cf4;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:700">+ Add</div></div>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;font-size:9px;color:#9daabd"><span style="background:#244775;color:#80bcff;border-radius:5px;padding:5px 7px">All 3</span><span>Active 1</span><span>Completed 1</span></div>
-      <div style="border:1px solid #3a4655;border-radius:8px;margin-top:10px;overflow:hidden">
-        <div style="padding:8px 9px;border-bottom:1px solid #35404e"><div style="font-size:10px;font-weight:650">Linux-distribution.iso</div><div style="display:flex;align-items:center;gap:6px;margin-top:7px"><span style="display:block;width:106px;height:5px;border-radius:3px;background:linear-gradient(to right,#468bfa 68%,#394554 68%)"></span><span style="font-size:9px;color:#8ebdff">68%</span></div></div>
-        <div style="padding:8px 9px"><div style="font-size:10px;font-weight:650">Sample-video.mp4</div><div style="font-size:9px;color:#56dc8c;margin-top:5px">Finished</div></div>
-      </div>
-    </div>`);
+  await promo(440, 280, 'store-small-promo-440x280.jpg', smallPromoMarkup(iconUrl));
   await promo(1400, 560, 'store-marquee-promo-1400x560.jpg', `
     <div style="position:absolute;inset:0;background:linear-gradient(112deg,#f9fcff 0%,#ecf5ff 56%,#d7eaff 100%)"></div>
     <div style="position:absolute;left:82px;top:65px;max-width:645px;z-index:2">

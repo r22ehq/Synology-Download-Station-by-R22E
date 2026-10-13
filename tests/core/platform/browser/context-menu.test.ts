@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock, type MockedFunction } from 'vitest';
 // We will test the logic we put in background.ts manually since background.ts is an entrypoint.
 // Actually, it's better to extract the context menu logic to a testable function.
 
@@ -29,6 +29,11 @@ vi.mock('wxt/browser', () => ({
 }));
 
 describe('Context Menu Permission Flow', () => {
+  const containsPermission = browser.permissions.contains as Mock<() => Promise<boolean>>;
+  const requestPermission = browser.permissions.request as Mock<() => Promise<boolean>>;
+  const createWindow = browser.windows.create as MockedFunction<typeof browser.windows.create>;
+  const createContextMenu = browser.contextMenus.create as MockedFunction<typeof browser.contextMenus.create>;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -42,7 +47,7 @@ describe('Context Menu Permission Flow', () => {
         hasPerm = await browser.permissions.request({ origins: [originPattern] });
         if (!hasPerm) {
           await browser.windows.create({
-            url: browser.runtime.getURL(`/prompt.html?url=${encodeURIComponent(url)}&origin=${encodeURIComponent(originPattern)}` as any),
+            url: browser.runtime.getURL(`/prompt.html?url=${encodeURIComponent(url)}&origin=${encodeURIComponent(originPattern)}`),
             type: 'popup',
             width: 400,
             height: 300,
@@ -56,7 +61,7 @@ describe('Context Menu Permission Flow', () => {
   };
 
   it('context-menu click with existing permission', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(true);
+    containsPermission.mockResolvedValue(true);
     const result = await handleContextMenuClick('https://tracker.example.com/file.torrent');
     
     expect(result).toBe('download_torrent');
@@ -64,8 +69,8 @@ describe('Context Menu Permission Flow', () => {
   });
 
   it('context-menu click requesting permission successfully', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(false);
-    vi.mocked(browser.permissions.request as any).mockResolvedValue(true);
+    containsPermission.mockResolvedValue(false);
+    requestPermission.mockResolvedValue(true);
     
     const result = await handleContextMenuClick('https://tracker.example.com/file.torrent');
     
@@ -74,20 +79,20 @@ describe('Context Menu Permission Flow', () => {
   });
 
   it('permission denied', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(false);
-    vi.mocked(browser.permissions.request as any).mockResolvedValue(false);
+    containsPermission.mockResolvedValue(false);
+    requestPermission.mockResolvedValue(false);
     
     const result = await handleContextMenuClick('https://tracker.example.com/file.torrent');
     
     expect(result).toBe('denied_prompt_opened');
     expect(browser.windows.create).toHaveBeenCalled();
-    const createArgs = vi.mocked(browser.windows.create).mock.calls[0]?.[0] as any;
+    const createArgs = createWindow.mock.calls[0]?.[0];
     expect(createArgs?.url).toContain('prompt.html');
   });
 
   it('permission revoked between attempts', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(false);
-    vi.mocked(browser.permissions.request as any).mockResolvedValue(false);
+    containsPermission.mockResolvedValue(false);
+    requestPermission.mockResolvedValue(false);
     
     await handleContextMenuClick('https://tracker.example.com/file.torrent');
     expect(browser.windows.create).toHaveBeenCalled();
@@ -99,20 +104,20 @@ describe('Context Menu Permission Flow', () => {
   });
 
   it('tracker URL with unusual port', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(true);
+    containsPermission.mockResolvedValue(true);
     const result = await handleContextMenuClick('http://tracker.example.com:8080/file.torrent');
     expect(result).toBe('download_torrent');
     expect(browser.permissions.contains).toHaveBeenCalledWith({ origins: ['http://tracker.example.com:8080/*'] });
   });
 
   it('HTTP tracker', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(true);
+    containsPermission.mockResolvedValue(true);
     const result = await handleContextMenuClick('http://tracker.example.com/file.torrent');
     expect(result).toBe('download_torrent');
   });
 
   it('HTTPS tracker', async () => {
-    vi.mocked(browser.permissions.contains as any).mockResolvedValue(true);
+    containsPermission.mockResolvedValue(true);
     const result = await handleContextMenuClick('https://tracker.example.com/file.torrent');
     expect(result).toBe('download_torrent');
   });
@@ -122,7 +127,7 @@ describe('Context Menu Permission Flow', () => {
     expect(browser.contextMenus.create).toHaveBeenCalledTimes(1);
     expect(browser.contextMenus.create).toHaveBeenCalledWith(expect.objectContaining({ id: 'r22e-download-link' }));
 
-    vi.mocked(browser.contextMenus.create).mockClear();
+    createContextMenu.mockClear();
     await ContextMenuManager.registerMenus({ downloadEnabled: false, scrapeEnabled: true });
     expect(browser.contextMenus.create).toHaveBeenCalledTimes(1);
     expect(browser.contextMenus.create).toHaveBeenCalledWith(expect.objectContaining({ id: 'r22e-scrape-page' }));

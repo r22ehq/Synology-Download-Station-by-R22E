@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { SynoHttpClient } from '../../../../src/core/synology/transport/http-client';
+import type { DownloadTask } from '../../../../src/core/synology/download-station/types';
 
 describe('SynoHttpClient - SID Injection', () => {
   it('A. standard GET request includes _sid in query params', async () => {
@@ -51,12 +52,12 @@ describe('SynoHttpClient - SID Injection', () => {
     })));
     const client = new SynoHttpClient();
     
-    const res = await client.get<{ tasks: any[] }>('http://nas', 'API/endpoint');
+    const res = await client.get<{ tasks: Pick<DownloadTask, 'id'>[] }>('http://nas', 'API/endpoint');
     
     expect(res).toBeDefined();
     expect(res.tasks).toBeDefined();
-    expect(res.tasks[0].id).toBe('task-1');
-    expect((res as any).success).toBeUndefined(); // success is unwrapped
+    expect(res.tasks[0]?.id).toBe('task-1');
+    expect('success' in res).toBe(false); // success is unwrapped
   });
 
   it('G. throws a SynoError on success: false with correct error code', async () => {
@@ -86,7 +87,8 @@ describe('SynoHttpClient - SID Injection', () => {
         params: { passwd: 'TEST_PASSWORD_DO_NOT_LEAK' } 
       });
       expect.fail('Should have thrown');
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (!(err instanceof Error)) throw err;
       const msg = err.message;
       expect(msg).toMatch(/%5BREDACTED%5D|\[REDACTED\]/);
       expect(msg).not.toContain('TEST_SID_DO_NOT_LEAK');

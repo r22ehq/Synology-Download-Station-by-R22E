@@ -28,13 +28,13 @@ describe('TaskClient', () => {
 
   it('list() should construct correct params and parse response', async () => {
     const mockResponse = { tasks: [], total: 0, offset: 0 };
-    (httpClientMock.get as any).mockResolvedValue(mockResponse);
+    vi.mocked(httpClientMock.get!).mockResolvedValue(mockResponse);
 
     const result = await client.list(baseUrl, registryMock as unknown as ApiRegistry, sid, { limit: 10, offset: 5 }, { synoToken });
 
     expect(registryMock.getNegotiatedVersion).toHaveBeenCalledWith('SYNO.DownloadStation.Task', 2);
     expect(registryMock.resolveEndpoint).toHaveBeenCalledWith('SYNO.DownloadStation.Task');
-    expect(httpClientMock.get).toHaveBeenCalledWith(
+    expect(httpClientMock.get!).toHaveBeenCalledWith(
       baseUrl,
       '/webapi/DownloadStation/task.cgi',
       {
@@ -53,12 +53,12 @@ describe('TaskClient', () => {
   });
 
   it('create() with URI constructs correct params and calls post', async () => {
-    (httpClientMock.post as any).mockResolvedValue(undefined);
+    vi.mocked(httpClientMock.post!).mockResolvedValue(undefined);
 
     await client.create(baseUrl, registryMock as unknown as ApiRegistry, sid, { uri: ['http://example.com/file.zip'], destination: 'Downloads' }, { synoToken });
 
-    expect(httpClientMock.post).toHaveBeenCalledTimes(1);
-    const args = (httpClientMock.post as any).mock.calls[0];
+    expect(httpClientMock.post!).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(httpClientMock.post!).mock.calls[0]!;
     expect(args[0]).toBe(baseUrl);
     expect(args[1]).toBe('/webapi/DownloadStation/task.cgi');
     
@@ -73,13 +73,13 @@ describe('TaskClient', () => {
   });
 
   it('create() with file constructs correct FormData and calls post', async () => {
-    (httpClientMock.post as any).mockResolvedValue(undefined);
+    vi.mocked(httpClientMock.post!).mockResolvedValue(undefined);
 
     const blob = new Blob(['test content']);
     await client.create(baseUrl, registryMock as unknown as ApiRegistry, sid, { file: blob, destination: 'Downloads' }, { synoToken });
 
-    expect(httpClientMock.post).toHaveBeenCalledTimes(1);
-    const args = (httpClientMock.post as any).mock.calls[0];
+    expect(httpClientMock.post!).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(httpClientMock.post!).mock.calls[0]!;
     expect(args[0]).toBe(baseUrl);
     expect(args[1]).toBe('/webapi/DownloadStation/task.cgi');
     
@@ -95,11 +95,11 @@ describe('TaskClient', () => {
 
   it('pause() encodes task IDs correctly', async () => {
     const mockResponse = [{ id: 'dbid_1', error: 0 }];
-    (httpClientMock.post as any).mockResolvedValue(mockResponse);
+    vi.mocked(httpClientMock.post!).mockResolvedValue(mockResponse);
 
     await client.pause(baseUrl, registryMock as unknown as ApiRegistry, sid, ['dbid_1', 'dbid_2'], { synoToken });
 
-    const args = (httpClientMock.post as any).mock.calls[0];
+    const args = vi.mocked(httpClientMock.post!).mock.calls[0]!;
     const body = args[2] as URLSearchParams;
     expect(body.get('method')).toBe('pause');
     expect(body.get('id')).toBe('dbid_1,dbid_2');
@@ -107,11 +107,11 @@ describe('TaskClient', () => {
 
   it('resume() encodes task IDs correctly', async () => {
     const mockResponse = [{ id: 'dbid_1', error: 0 }];
-    (httpClientMock.post as any).mockResolvedValue(mockResponse);
+    vi.mocked(httpClientMock.post!).mockResolvedValue(mockResponse);
 
     await client.resume(baseUrl, registryMock as unknown as ApiRegistry, sid, ['dbid_1', 'dbid_2'], { synoToken });
 
-    const args = (httpClientMock.post as any).mock.calls[0];
+    const args = vi.mocked(httpClientMock.post!).mock.calls[0]!;
     const body = args[2] as URLSearchParams;
     expect(body.get('method')).toBe('resume');
     expect(body.get('id')).toBe('dbid_1,dbid_2');
@@ -119,11 +119,11 @@ describe('TaskClient', () => {
 
   it('delete() encodes task IDs correctly', async () => {
     const mockResponse = [{ id: 'dbid_1', error: 0 }];
-    (httpClientMock.post as any).mockResolvedValue(mockResponse);
+    vi.mocked(httpClientMock.post!).mockResolvedValue(mockResponse);
 
     await client.delete(baseUrl, registryMock as unknown as ApiRegistry, sid, ['dbid_1', 'dbid_2'], true, { synoToken });
 
-    const args = (httpClientMock.post as any).mock.calls[0];
+    const args = vi.mocked(httpClientMock.post!).mock.calls[0]!;
     const body = args[2] as URLSearchParams;
     expect(body.get('method')).toBe('delete');
     expect(body.get('id')).toBe('dbid_1,dbid_2');
