@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { Bell, Database, ExternalLink, Folder, Gauge, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
+import { Bell, CircleAlert, Database, ExternalLink, Folder, Gauge, Globe2, Info, Palette, Play, Plus, RefreshCw, Server, Trash2 } from 'lucide-preact';
 import { Button } from '../Button/Button';
 import { Input } from '../Input/Input';
 import { PasswordInput } from '../Input/PasswordInput';
@@ -41,6 +41,10 @@ const sections: Array<{ id: Section; label: string; icon: typeof Server }> = [
 ];
 
 const projectUrl = 'https://github.com/r22ehq/Synology-Download-Station-by-R22E';
+const websiteUrl = 'https://r22e.com';
+const chromeStoreUrl = 'https://chromewebstore.google.com/detail/synology-download-station/fghcklhmghcmhfhhhcmjfenchgghmanp';
+const edgeStoreUrl = 'https://microsoftedge.microsoft.com/addons/detail/dlaehmkhjnclaljfhkleblhdjgcjloom';
+const firefoxStoreUrl = 'https://addons.mozilla.org/en-US/firefox/addon/r22e-station/';
 const certificateHelpUrl = 'https://kb.synology.com/en-my/DSM/tutorial/Why_did_I_see_a_not_secure_warning_in_the_browser_when_connecting_to_my_Synology_product';
 
 const displayUrl = (profile: { protocol: string; host: string; port: number }) => `${profile.protocol}://${profile.host}:${profile.port}`;
@@ -51,6 +55,29 @@ const endpointCandidates = (value: string, defaultProtocol: 'http' | 'https' = '
   if (/^https?:\/\//i.test(trimmed)) return [trimmed];
   if (/:(\d+)$/.test(trimmed)) return [`${defaultProtocol}://${trimmed}`];
   return [`${defaultProtocol}://${trimmed}:${defaultProtocol === 'https' ? 5001 : 5000}`];
+};
+
+const parseLocalAddress = (value: string, protocol: 'http' | 'https') => {
+  const candidate = endpointCandidates(value, protocol)[0]!;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error('Enter a complete NAS address, such as 192.168.1.10.');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+    throw new Error('Enter only the NAS address and optional port, without a path or sign-in details.');
+  }
+  const rawHost = candidate.replace(/^https?:\/\//i, '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  if (/^[\d.]+$/.test(rawHost)) {
+    const octets = rawHost.split('.');
+    if (octets.length !== 4 || octets.some(octet => !/^(0|[1-9]\d{0,2})$/.test(octet) || Number(octet) > 255)) {
+      throw new Error('Enter a complete IP address with four numbers from 0 to 255.');
+    }
+  }
+  const normalized = normalizeNasUrl(candidate);
+  if (normalized.protocol !== protocol) throw new Error('Choose the matching Local HTTP or Local HTTPS option.');
+  return normalized;
 };
 
 const isHttpsIpAddress = (value: string, defaultProtocol: 'http' | 'https') => {
@@ -80,6 +107,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   const pendingProfile = useRef<{ id: string; endpoint: string; username: string } | null>(null);
   const previousActiveProfileId = useRef<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
+  const [addressError, setAddressError] = useState('');
   const [permissionKey, setPermissionKey] = useState('');
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const [quickConnectRoutes, setQuickConnectRoutes] = useState<{ id: string; urls: string[] } | null>(null);
@@ -89,7 +117,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   let accessUrls: string[] = [];
   try {
     accessUrls = connectionType === 'local'
-      ? (hasAddress(url) ? [normalizeNasUrl(endpointCandidates(url, localProtocol)[0]!).baseUrl] : [])
+      ? (hasAddress(url) ? [parseLocalAddress(url, localProtocol).baseUrl] : [])
       : (quickConnectRoutes?.id === quickConnectId.trim() ? quickConnectRoutes.urls : []);
   } catch { /* An incomplete address cannot request access. */ }
   const accessKey = JSON.stringify(accessUrls);
@@ -130,15 +158,27 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
   const httpsIpAddress = connectionType === 'local' && isHttpsIpAddress(url, localProtocol);
   const quickConnectAddress = connectionType === 'local' && /(?:^|\.)direct\.quickconnect\.to(?::\d+)?(?:\/|$)/i.test(url.trim().replace(/^https?:\/\//i, ''));
   const usesHttp = connectionType === 'local' && localProtocol === 'http';
-  const hasNasAddress = url.trim().replace(/^https?:\/\//i, '').trim().length > 0;
+  const hasNasAddress = accessUrls.length > 0;
 
   const updateNasAddress = (value: string) => {
     addressEdited.current = true;
     setPermissionKey('');
     setUrl(value);
+    setAddressError('');
     if (/^http:\/\//i.test(value)) setLocalProtocol('http');
     else if (/^https:\/\//i.test(value)) setLocalProtocol('https');
     setTestResult(null);
+  };
+
+  const finishNasAddress = () => {
+    if (!hasAddress(url)) return;
+    try {
+      const normalized = parseLocalAddress(url, localProtocol);
+      setUrl(normalized.baseUrl);
+      setAddressError('');
+    } catch (error) {
+      setAddressError(error instanceof Error ? error.message : 'Enter a valid NAS address.');
+    }
   };
 
   const selectLocalProtocol = (protocol: 'http' | 'https') => {
@@ -352,7 +392,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
                 <button type="button" aria-pressed={usesHttp} className={usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('http')}><strong>Local HTTP</strong><small>Port 5000 · not encrypted</small></button>
                 <button type="button" aria-pressed={!usesHttp} className={!usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('https')}><strong>Local HTTPS</strong><small>Port 5001 · valid certificate required</small></button>
               </div>
-              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} placeholder={usesHttp ? 'http://192.168.0.81:5000' : 'https://your-nas.example.com:5001'} />
+              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} onBlur={finishNasAddress} error={addressError} placeholder={usesHttp ? 'http://000.000.000.000:5000' : 'https://your-nas.example.com:5001'} />
               <div className={styles.connectionHint}>
                 {usesHttp
                   ? <span>Not encrypted. Use only on a trusted local network.</span>
@@ -370,7 +410,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
           <PasswordInput id="nas-password" label="Password" disabled={!canEnterCredentials} value={password} onInput={event => setPassword(event.currentTarget.value)} autocomplete="current-password" placeholder="Password" />
           {waitingFor2fa && <Input id="nas-otp" label="Verification code" value={otpCode} onInput={event => setOtpCode(event.currentTarget.value)} inputMode="numeric" autocomplete="one-time-code" placeholder="Verification code" />}
           <label className={styles.saveOption}><input type="checkbox" checked={rememberDevice} onChange={event => setRememberDevice(event.currentTarget.checked)} /><span>Remember this device <small>Keep the NAS session and device token in this browser.</small></span></label>
-          <label className={styles.saveOption}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span>Save password on this device <small>Optional. Stored locally in this browser; never synced or exported.</small></span></label>
+          <label className={styles.saveOption}><input type="checkbox" checked={savePassword} onChange={event => setSavePassword(event.currentTarget.checked)} /><span><span className={styles.optionTitle}>Save password on this device <strong className={styles.recommended}>Recommended</strong></span><small className={styles.optionInfo}><CircleAlert size={13} aria-hidden="true" />Allows automatic sign-in when your NAS expires the session. Two-step verification may still be required. Stored only in this browser.</small></span></label>
           {testResult && <div className={testResult.success ? styles.success : styles.error} role="status">{testResult.msg}</div>}
           <div className={styles.actions}>
             <Button variant="ghost" size="sm" onClick={cancelSetup}>Cancel</Button>
@@ -427,7 +467,7 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
     about: <>
       <div className={styles.pageHeading}><div><h2>About R22E Station</h2><p>A browser companion for Synology Download Station.</p></div></div>
       <div className={styles.infoCard}>
-        <div className={styles.aboutIdentity}><img src="/icon-48.png" width="40" height="40" alt="" /><div><strong>Synology Download Station by R22E</strong><span>Version {browser.runtime.getManifest().version} · Developed by R22E Studio</span></div></div>
+        <div className={styles.aboutIdentity}><img src="/icon-48.png" width="40" height="40" alt="" /><div><strong>Synology Download Station by R22E</strong><span>Version {browser.runtime.getManifest().version} · <a href={websiteUrl} target="_blank" rel="noopener noreferrer">Made with love by R22E</a></span></div></div>
         <p>Manage NAS download tasks from your browser, send links and task files to Download Station, and keep an eye on progress. This independent open-source project is not affiliated with Synology.</p>
       </div>
       <div className={styles.infoCard}>
@@ -437,8 +477,8 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
       </div>
       <div className={styles.infoCard}>
         <h3>Availability</h3>
-        <p>Store listings will be linked here after this extension is published. Until then, use a test build from this project.</p>
-        <div className={styles.storeList}><span>Chrome Web Store <small>Coming soon</small></span><span>Microsoft Edge Add-ons <small>Coming soon</small></span><span>Firefox Add-ons <small>Coming soon</small></span></div>
+        <p>Install R22E Station from your browser's official add-on store.</p>
+        <div className={styles.storeList}><a href={chromeStoreUrl} target="_blank" rel="noopener noreferrer">Chrome Web Store <ExternalLink size={14} aria-hidden="true" /></a><a href={edgeStoreUrl} target="_blank" rel="noopener noreferrer">Microsoft Edge Add-ons <ExternalLink size={14} aria-hidden="true" /></a><a href={firefoxStoreUrl} target="_blank" rel="noopener noreferrer">Firefox Add-ons <ExternalLink size={14} aria-hidden="true" /></a></div>
       </div>
       <div className={styles.infoCard}>
         <h3>License & privacy</h3>

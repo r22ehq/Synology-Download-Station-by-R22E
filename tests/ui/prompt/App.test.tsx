@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/preact';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { App } from '../../../src/../entrypoints/prompt/App';
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../../../src/core/platform/messaging/message-contracts';
@@ -17,6 +17,8 @@ vi.mock('../../../src/core/platform/messaging/message-contracts', () => ({
 }));
 
 describe('Permission Prompt UI', () => {
+  const requestPermission = browser.permissions.request as Mock<() => Promise<boolean>>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     
@@ -47,7 +49,7 @@ describe('Permission Prompt UI', () => {
   });
 
   it('user grants access successfully', async () => {
-    vi.mocked(browser.permissions.request as any).mockResolvedValue(true);
+    requestPermission.mockResolvedValue(true);
     
     render(<App />);
     const grantBtn = await screen.findByText('Grant Access');

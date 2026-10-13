@@ -81,7 +81,7 @@ test.describe('Profile Configuration', () => {
     await gotoOptions(page);
     await page.getByText('Add NAS').click();
     await expect(page.getByRole('radio', { name: /^Local Recommended/ })).toBeChecked();
-    await expect(page.getByText('Recommended', { exact: true })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Connection method' }).getByText('Recommended', { exact: true })).toBeVisible();
     await page.getByRole('radio', { name: /^QuickConnect Unofficial/ }).check();
     await expect(page.getByRole('textbox', { name: 'QuickConnect ID' })).toBeVisible();
     await expect(page.getByText('Unofficial · may break')).toBeVisible();

@@ -98,11 +98,21 @@ test.describe('Real NAS Integration Suite', () => {
 
     if (config.destination) {
       await page.evaluate(async (dest) => {
-        const _chrome = (globalThis as any).chrome;
+        const _chrome = (globalThis as unknown as {
+          chrome: {
+            storage: {
+              local: {
+                get(key: string): Promise<Record<string, Array<Record<string, unknown>>>>;
+                set(value: Record<string, unknown>): Promise<void>;
+              };
+            };
+          };
+        }).chrome;
         const result = await _chrome.storage.local.get('local:profiles');
         const profiles = result['local:profiles'] || [];
-        if (profiles.length > 0) {
-          profiles[0].defaultDestination = dest;
+        const profile = profiles[0];
+        if (profile) {
+          profile.defaultDestination = dest;
           await _chrome.storage.local.set({ 'local:profiles': profiles });
         }
       }, config.destination);

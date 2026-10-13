@@ -8,6 +8,7 @@ export class MockNasServer {
   private port: number;
   public state: {
     authStatus: 'SUCCESS' | 'OTP_REQUIRED' | 'INVALID_CREDENTIALS' | 'SESSION_EXPIRED';
+    taskListErrorUntilLogin: 105 | 106 | 119 | null;
     tasks: DownloadTask[];
     statistics: Record<string, unknown>;
     requireDeviceToken: boolean;
@@ -22,6 +23,7 @@ export class MockNasServer {
     this.port = port;
     this.state = {
       authStatus: 'SUCCESS',
+      taskListErrorUntilLogin: null,
       tasks: [],
       statistics: { speed_download: 0, speed_upload: 0 },
       requireDeviceToken: false,
@@ -133,6 +135,7 @@ export class MockNasServer {
   public reset(): void {
     this.state = {
       authStatus: 'SUCCESS',
+      taskListErrorUntilLogin: null,
       tasks: [],
       statistics: { speed_download: 0, speed_upload: 0 },
       requireDeviceToken: false,
@@ -195,6 +198,7 @@ export class MockNasServer {
         if (otpCode !== '123456') return { success: false, error: { code: 404 } };
         return { success: true, data: { sid: 'mock-sid-123', did: 'test-valid-did' } };
       }
+      this.state.taskListErrorUntilLogin = null;
       return { success: true, data: { sid: 'mock-sid-123', did: 'test-valid-did' } };
     }
 
@@ -220,6 +224,9 @@ export class MockNasServer {
 
     if (api === 'SYNO.DownloadStation.Task') {
       if (method === 'list') {
+        if (this.state.taskListErrorUntilLogin !== null) {
+          return { success: false, error: { code: this.state.taskListErrorUntilLogin } };
+        }
         return { success: true, data: { tasks: this.state.tasks, total: this.state.tasks.length } };
       }
       if (method === 'create') {

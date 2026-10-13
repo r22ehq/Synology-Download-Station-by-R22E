@@ -67,7 +67,7 @@ export function DownloadPreferences({ section }: { section: 'location' | 'speed'
     } finally { setSaving(false); }
   };
 
-  return <div>
+  return <div className={styles.preferences}>
     <div className={styles.heading}><h2>{section === 'location' ? 'Location' : 'Speed'}</h2><p>{section === 'location' ? 'Choose where new downloads from this extension are saved.' : 'Set Download Station speed limits in KB/s. Use 0 for unlimited.'}</p></div>
     {!profile ? <p className={styles.hint}>Add a NAS profile first.</p> : <>
       <p className={styles.profile}>NAS: <strong>{profile.name}</strong></p>
@@ -77,13 +77,13 @@ export function DownloadPreferences({ section }: { section: 'location' | 'speed'
         <p className={styles.selected}>Selected: <strong>{destination || 'Download Station default'}</strong></p>
         <DestinationBrowser key={profileId} defaultDestination={destination} onSelect={setDestination} />
         <p className={styles.hint}>This applies to new downloads from this extension only. Existing downloads and NAS settings stay unchanged.</p>
-      </div> : preferences ? <div className={styles.card}>
-        {!preferences.isManager && <p className={styles.hint}>Your account can view these limits. An administrator is required to change them.</p>}
-        <fieldset className={styles.rates} disabled={!preferences.isManager || saving}>
+      </div> : <div className={styles.card} aria-busy={loading}>
+        {preferences && !preferences.isManager && <p className={styles.hint}>Your account can view these limits. An administrator is required to change them.</p>}
+        <fieldset className={styles.rates} disabled={loading || !preferences?.isManager || saving}>
           {speedFields.map(field => <Input key={field.key} id={`speed-${field.key}`} label={`${field.label} (KB/s)`} type="number" min="0" step="1" value={rates[field.key]} onInput={event => { const value = event.currentTarget.value; setRates(values => ({ ...values, [field.key]: value })); }} />)}
         </fieldset>
         <p className={styles.hint}>These are NAS-wide limits, not per-download limits. HTTP / FTP changes apply to new or resumed downloads.</p>
-      </div> : null}
+      </div>}
       {message && <p className={message.error ? styles.error : styles.success} role="status">{message.text}</p>}
       <div className={styles.actions}><Button variant="secondary" size="sm" onClick={() => setReloadKey(key => key + 1)} disabled={loading || saving}>Reload</Button><Button size="sm" onClick={save} isLoading={saving} disabled={loading || (section === 'speed' && !preferences?.isManager)}>Save {section === 'location' ? 'location' : 'speed limits'}</Button></div>
     </>}

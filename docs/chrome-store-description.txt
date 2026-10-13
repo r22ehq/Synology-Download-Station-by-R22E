@@ -23,9 +23,10 @@ Use Local HTTPS with a certificate your browser trusts. Local HTTP is also avail
 ► Your NAS, your account
 No R22E account is required. Access to your NAS or a selected source site is requested when needed. Saving your NAS password is optional; saved passwords stay in this browser's local extension storage, without extension-level encryption.
 
-WHAT'S NEW IN 0.1.7
-• Fixed an intermittent return to Login Required after Test connection and Save and connect.
-• Prevented delayed session reads from overwriting a new login or restoring a session after logout.
+WHAT'S NEW IN 0.1.8
+• Made session-expiry recovery clearer, with an optional locally saved password for automatic sign-in. Two-step verification may still be required.
+• Improved NAS address validation and guidance for incomplete or invalid addresses.
+• Kept Settings navigation stable when switching to Location or Speed, and added direct store and R22E links in About.
 
 GETTING STARTED
 A compatible Synology NAS, Download Station, and your own NAS account are required. Open the extension, choose Add NAS, enter your DSM address, and connect.

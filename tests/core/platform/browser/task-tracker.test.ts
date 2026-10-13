@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { DownloadTask } from '../../../../src/core/synology/download-station/types';
+import type { ProfileTaskState } from '../../../../src/core/platform/browser/task-tracker';
 
-const store: Record<string, any> = {};
+const store: Record<string, ProfileTaskState> = {};
 
 vi.mock('../../../../src/core/platform/storage/storage-items', () => {
   return {
@@ -10,7 +11,7 @@ vi.mock('../../../../src/core/platform/storage/storage-items', () => {
         const key = `session:taskTracker_${profileId}`;
         return store[key] !== undefined ? JSON.parse(JSON.stringify(store[key])) : { tasks: {}, authLostNotified: false };
       }),
-      setValue: vi.fn().mockImplementation(async (val: any) => {
+      setValue: vi.fn().mockImplementation(async (val: ProfileTaskState) => {
         const key = `session:taskTracker_${profileId}`;
         store[key] = JSON.parse(JSON.stringify(val));
       }),

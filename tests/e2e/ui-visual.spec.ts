@@ -63,6 +63,10 @@ test.describe('Current UI visual audit', () => {
     await page.screenshot({ path: path.join(auditDir, '07-data-backup.png'), fullPage: true });
     await page.getByRole('button', { name: 'About' }).click();
     await expect(page.getByText('About R22E Station')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Made with love by R22E' })).toHaveAttribute('href', 'https://r22e.com');
+    await expect(page.getByRole('link', { name: 'Chrome Web Store' })).toHaveAttribute('href', /chromewebstore\.google\.com/);
+    await expect(page.getByRole('link', { name: 'Microsoft Edge Add-ons' })).toHaveAttribute('href', /microsoftedge\.microsoft\.com/);
+    await expect(page.getByRole('link', { name: 'Firefox Add-ons' })).toHaveAttribute('href', /addons\.mozilla\.org/);
     await page.screenshot({ path: path.join(auditDir, '07b-about.png'), fullPage: true });
 
     await page.setViewportSize({ width: 430, height: 760 });

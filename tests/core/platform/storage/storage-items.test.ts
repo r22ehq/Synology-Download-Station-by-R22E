@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NasProfile } from '../../../../src/core/platform/storage/storage-items';
 
-const store: Record<string, any> = {};
+const store: Record<string, unknown> = {};
 
 vi.mock('wxt/utils/storage', () => {
   return {
     storage: {
-      defineItem: vi.fn((key: string, options: any) => ({
+      defineItem: vi.fn(<T>(key: string, options: { defaultValue: T }) => ({
         getValue: vi.fn().mockImplementation(async () => {
           return store[key] !== undefined ? JSON.parse(JSON.stringify(store[key])) : JSON.parse(JSON.stringify(options.defaultValue));
         }),
-        setValue: vi.fn().mockImplementation(async (val: any) => {
+        setValue: vi.fn().mockImplementation(async (val: T) => {
           store[key] = JSON.parse(JSON.stringify(val));
         }),
         removeValue: vi.fn().mockImplementation(async () => {
@@ -29,7 +30,10 @@ describe('removeProfileData', () => {
 
   it('should clean all profile-scoped data', async () => {
     // Setup state
-    await profilesStorage.setValue([{ id: 'p1', name: 'Profile 1' } as any, { id: 'p2', name: 'Profile 2' } as any]);
+    await profilesStorage.setValue([
+      { id: 'p1', name: 'Profile 1', host: 'nas-1.local', port: 5000, protocol: 'http', username: 'admin' },
+      { id: 'p2', name: 'Profile 2', host: 'nas-2.local', port: 5000, protocol: 'http', username: 'admin' },
+    ] satisfies NasProfile[]);
     await activeProfileIdStorage.setValue('p1');
     await sessionDataStorage.setValue({
       'p1': { sid: 'sid1' },

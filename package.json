@@ -1,6 +1,6 @@
 {
   "name": "synology-download-station-by-r22e",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Fast, lightweight, open-source browser client for Synology Download Station",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "zip:all": "pnpm zip:chrome && pnpm zip:firefox && pnpm zip:edge && pnpm zip:opera",
     "typecheck": "tsc --noEmit",
     "check:release": "node scripts/check-release-hygiene.mjs",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"entrypoints/**/*.{ts,tsx,html,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\" \"entrypoints/**/*.{ts,tsx,html,css}\"",

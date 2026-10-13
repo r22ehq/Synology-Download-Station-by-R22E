@@ -40,6 +40,10 @@ describe('Connection setup permission step', () => {
 
   it('defaults to HTTP and requests access before credentials, never during Test', async () => {
     await openSetup();
+    expect((screen.getByLabelText('NAS address') as HTMLInputElement).placeholder).toBe('http://000.000.000.000:5000');
+    const savePassword = screen.getByRole('checkbox', { name: /Save password on this device/ });
+    expect(savePassword.closest('label')?.textContent).toContain('Recommended');
+    expect(savePassword.closest('label')?.textContent).toContain('automatic sign-in when your NAS expires the session');
     expect(screen.getByRole('button', { name: /Local HTTP\s*Port 5000/ }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.input(screen.getByLabelText('NAS address'), { target: { value: 'http://nas.test:5000' } });
     await waitFor(() => expect(draft).toHaveProperty('nasSetupAddress'));
@@ -55,6 +59,40 @@ describe('Connection setup permission step', () => {
     expect(PermissionsManager.requestHostPermissions).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(draft)).not.toContain('mock-password');
     expect(JSON.stringify(draft)).not.toContain('mock-user');
+  });
+
+  it.each([
+    ['192.168.1.10', 'http://192.168.1.10:5000'],
+    ['nas.local:8080', 'http://nas.local:8080'],
+    ['http://nas.local:5000', 'http://nas.local:5000'],
+  ])('completes a local HTTP address before credentials: %s', async (entry, expected) => {
+    await openSetup();
+    const address = screen.getByLabelText('NAS address') as HTMLInputElement;
+    fireEvent.input(address, { target: { value: entry } });
+    fireEvent.blur(address);
+    expect(address.value).toBe(expected);
+    fireEvent.click(screen.getByRole('button', { name: 'Allow NAS access' }));
+    await waitFor(() => expect(PermissionsManager.requestHostPermissions).toHaveBeenCalledWith([expected]));
+    expect((screen.getByLabelText('Username') as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it('preserves explicitly entered HTTPS and its secure default port', async () => {
+    await openSetup();
+    const address = screen.getByLabelText('NAS address') as HTMLInputElement;
+    fireEvent.input(address, { target: { value: 'https://nas.example.test' } });
+    fireEvent.blur(address);
+    expect(address.value).toBe('https://nas.example.test:5001');
+    expect(screen.getByRole('button', { name: /Local HTTPS/ }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it.each(['192.1', '192.168.1.999', 'http://nas.local:5000/web', 'ftp://nas.local'])('rejects incomplete or unsafe address input: %s', async entry => {
+    await openSetup();
+    const address = screen.getByLabelText('NAS address') as HTMLInputElement;
+    fireEvent.input(address, { target: { value: entry } });
+    fireEvent.blur(address);
+    expect(screen.getByRole('button', { name: 'Allow NAS access' }).hasAttribute('disabled')).toBe(true);
+    expect(PermissionsManager.requestHostPermissions).not.toHaveBeenCalled();
+    expect((screen.getByLabelText('Username') as HTMLInputElement).disabled).toBe(true);
   });
 
   it('retains the address after a popup closes without saving credential fields', async () => {

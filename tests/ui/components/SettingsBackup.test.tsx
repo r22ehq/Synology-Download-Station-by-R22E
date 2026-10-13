@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/preact';
 import { SettingsBackup } from '../../../src/ui/components/SettingsBackup/SettingsBackup';
 import { settingsStorage, profilesStorage } from '../../../src/core/platform/storage/storage-items';
+import type { AppSettings, NasProfile } from '../../../src/core/platform/storage/storage-items';
 import { notifications } from '../../../src/core/platform/browser/notifications';
 
 vi.mock('../../../src/core/platform/storage/storage-items', () => ({
@@ -22,6 +23,11 @@ vi.mock('../../../src/core/platform/browser/notifications', () => ({
 }));
 
 describe('SettingsBackup', () => {
+  const getSettings = settingsStorage.getValue as MockedFunction<typeof settingsStorage.getValue>;
+  const setSettings = settingsStorage.setValue as MockedFunction<typeof settingsStorage.setValue>;
+  const getProfiles = profilesStorage.getValue as MockedFunction<typeof profilesStorage.getValue>;
+  const setProfiles = profilesStorage.setValue as MockedFunction<typeof profilesStorage.setValue>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:test-url');
@@ -31,8 +37,8 @@ describe('SettingsBackup', () => {
   });
 
   it('exports only safe configuration fields', async () => {
-    vi.mocked(settingsStorage.getValue as any).mockResolvedValue({ theme: 'dark', secretKey: 'secret' } as any);
-    vi.mocked(profilesStorage.getValue as any).mockResolvedValue([{
+    getSettings.mockResolvedValue({ theme: 'dark', secretKey: 'secret' } as AppSettings & { secretKey: string });
+    getProfiles.mockResolvedValue([{
       id: 'p1',
       name: 'NAS 1',
       host: 'nas.com',
@@ -42,7 +48,7 @@ describe('SettingsBackup', () => {
       password: 'password123', // Should be omitted
       defaultDestination: '/downloads',
       sid: 'sensitive-sid', // Should be omitted
-    }] as any);
+    } as NasProfile & { password: string; sid: string }]);
 
     render(<SettingsBackup />);
     
@@ -142,12 +148,12 @@ describe('SettingsBackup', () => {
     const goodJson = JSON.stringify({ version: 1, settings: { theme: 'dark' }, profiles: [{ id: 'p1' }] });
     const file = new File([goodJson], 'backup.json', { type: 'application/json' });
     
-    vi.mocked(settingsStorage.getValue as any).mockResolvedValue({ theme: 'light' });
-    vi.mocked(profilesStorage.getValue as any).mockResolvedValue([]);
+    getSettings.mockResolvedValue({ theme: 'light' } as AppSettings);
+    getProfiles.mockResolvedValue([]);
     
     // Simulate settings success, but profiles failure
-    vi.mocked(settingsStorage.setValue as any).mockResolvedValue();
-    vi.mocked(profilesStorage.setValue as any).mockRejectedValueOnce(new Error('Storage quota exceeded')).mockResolvedValue();
+    setSettings.mockResolvedValue();
+    setProfiles.mockRejectedValueOnce(new Error('Storage quota exceeded')).mockResolvedValue();
     
     render(<SettingsBackup />);
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
