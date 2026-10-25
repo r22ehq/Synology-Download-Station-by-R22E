@@ -4,7 +4,7 @@ R22E Station is a browser client for an existing Synology Download Station insta
 
 ## Connect a NAS
 
-Open **Settings → Connection → Add NAS**. Choose **Local HTTP**, **Local HTTPS**, or the experimental **QuickConnect** option, then enter the NAS address. The local address can include its protocol and port; HTTP normally uses port 5000 and HTTPS normally uses port 5001. Grant browser access to that address before entering credentials. The connection test reports whether the NAS can be reached and whether the account can sign in. An incorrect address, unavailable NAS, invalid credentials, or missing permissions produce different error guidance.
+Open **Settings → Connection → Add NAS**. Choose **Local HTTP**, **Local HTTPS**, or the experimental **QuickConnect** option, then enter the NAS address. Ports 5000 (HTTP) and 5001 (HTTPS) are defaults, not requirements: append your NAS's configured port, for example `nas.local:8080` or `https://nas.example.com:443`. The extension keeps the selected protocol and port. Grant browser access to that address before entering credentials. The connection test reports whether the NAS can be reached and whether the account can sign in. An incorrect address, unavailable NAS, invalid credentials, or missing permissions produce different error guidance.
 
 HTTP does **not** encrypt credentials or task data in transit; use it only on a trusted local network. HTTPS requires a hostname and certificate trusted by the browser. QuickConnect-ID discovery only supports direct routes, not Synology relay, and may stop working if Synology changes its service. The extension does not silently change your selected protocol.
 

@@ -18,15 +18,14 @@ Adjust supported Download Station speed limits from Settings. These are NAS-wide
 Choose light or dark mode, customize the accent color, and enable optional browser notifications. Pick from six completion sounds and preview them before saving.
 
 ► Connect to your own NAS
-Use Local HTTPS with a certificate your browser trusts. Local HTTP is also available for trusted networks, but it is not encrypted. An experimental QuickConnect-ID option supports direct connections only; it is unofficial and may stop working. QuickConnect relay is not supported.
+Use Local HTTPS with a certificate your browser trusts. Local HTTP is also available for trusted networks, but it is not encrypted. Enter your NAS's custom port in the address when needed; 5000 and 5001 are only defaults. An experimental QuickConnect-ID option supports direct connections only; it is unofficial and may stop working. QuickConnect relay is not supported.
 
 ► Your NAS, your account
 No R22E account is required. Access to your NAS or a selected source site is requested when needed. Saving your NAS password is optional; saved passwords stay in this browser's local extension storage, without extension-level encryption.
 
-WHAT'S NEW IN 0.1.8
-• Made session-expiry recovery clearer, with an optional locally saved password for automatic sign-in. Two-step verification may still be required.
-• Improved NAS address validation and guidance for incomplete or invalid addresses.
-• Kept Settings navigation stable when switching to Location or Speed, and added direct store and R22E links in About.
+WHAT'S NEW IN 0.1.9
+• Custom NAS ports are now clearer during setup, and explicitly entered HTTP :80 or HTTPS :443 addresses are preserved.
+• Ports 5000 and 5001 remain the defaults; other configured ports continue to work.
 
 GETTING STARTED
 A compatible Synology NAS, Download Station, and your own NAS account are required. Open the extension, choose Add NAS, enter your DSM address, and connect.

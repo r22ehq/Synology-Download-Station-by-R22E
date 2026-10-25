@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-10-25
+
+### Fixed
+- Preserved explicitly entered HTTP port 80 and HTTPS port 443 instead of replacing them with the DSM defaults.
+- Clarified in the connection form that ports 5000 and 5001 are defaults, not the only supported ports.
+- Rejected port 0 instead of silently substituting a default port.
+
+## [0.1.8] - 2026-10-13
+
+### Changed
+- Improved session-expiry recovery and NAS address guidance.
+- Kept Settings navigation stable and added official browser-store links to About.
+
 ## [0.1.7] - 2026-09-29
 
 ### Fixed

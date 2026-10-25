@@ -21,10 +21,15 @@ export function normalizeNasUrl(input: string): NormalizedUrlResult {
   }
 
   const protocol = url.protocol === 'http:' ? 'http' : 'https';
-  let port = url.port ? parseInt(url.port, 10) : undefined;
+  // URL strips explicit default web ports (:80 and :443). Read the port from
+  // the original authority so a NAS behind a reverse proxy keeps its address.
+  const authority = urlStr.match(/^https?:\/\/([^/?#]*)/i)?.[1] ?? '';
+  const explicitPort = authority.match(/:(\d+)$/)?.[1];
+  let port = explicitPort === undefined ? undefined : Number(explicitPort);
   const host = url.hostname;
 
-  if (!port) {
+  if (port === 0) throw new Error('NAS port must be between 1 and 65535.');
+  if (port === undefined) {
     port = protocol === 'https' ? 5001 : 5000;
   }
 

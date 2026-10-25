@@ -44,7 +44,8 @@ describe('Connection setup permission step', () => {
     const savePassword = screen.getByRole('checkbox', { name: /Save password on this device/ });
     expect(savePassword.closest('label')?.textContent).toContain('Recommended');
     expect(savePassword.closest('label')?.textContent).toContain('automatic sign-in when your NAS expires the session');
-    expect(screen.getByRole('button', { name: /Local HTTP\s*Port 5000/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /Local HTTP\s*Port 5000 by default/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText(/Custom port\? Add it after the address/)).toBeTruthy();
     fireEvent.input(screen.getByLabelText('NAS address'), { target: { value: 'http://nas.test:5000' } });
     await waitFor(() => expect(draft).toHaveProperty('nasSetupAddress'));
     expect(PermissionsManager.requestHostPermissions).not.toHaveBeenCalled();
@@ -64,6 +65,7 @@ describe('Connection setup permission step', () => {
   it.each([
     ['192.168.1.10', 'http://192.168.1.10:5000'],
     ['nas.local:8080', 'http://nas.local:8080'],
+    ['nas.local:80', 'http://nas.local:80'],
     ['http://nas.local:5000', 'http://nas.local:5000'],
   ])('completes a local HTTP address before credentials: %s', async (entry, expected) => {
     await openSetup();
@@ -83,6 +85,16 @@ describe('Connection setup permission step', () => {
     fireEvent.blur(address);
     expect(address.value).toBe('https://nas.example.test:5001');
     expect(screen.getByRole('button', { name: /Local HTTPS/ }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('preserves a custom HTTPS port through the access request', async () => {
+    await openSetup();
+    const address = screen.getByLabelText('NAS address') as HTMLInputElement;
+    fireEvent.input(address, { target: { value: 'https://nas.example.test:443' } });
+    fireEvent.blur(address);
+    expect(address.value).toBe('https://nas.example.test:443');
+    fireEvent.click(screen.getByRole('button', { name: 'Allow NAS access' }));
+    await waitFor(() => expect(PermissionsManager.requestHostPermissions).toHaveBeenCalledWith(['https://nas.example.test:443']));
   });
 
   it.each(['192.1', '192.168.1.999', 'http://nas.local:5000/web', 'ftp://nas.local'])('rejects incomplete or unsafe address input: %s', async entry => {
