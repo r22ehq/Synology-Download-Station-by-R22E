@@ -389,10 +389,10 @@ export function SettingsView({ onAddNas, inActionPopup = false }: { onAddNas: ()
           {connectionType === 'local'
             ? <>
               <div className={styles.protocolChoices} role="group" aria-label="Local connection protocol">
-                <button type="button" aria-pressed={usesHttp} className={usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('http')}><strong>Local HTTP</strong><small>Port 5000 · not encrypted</small></button>
-                <button type="button" aria-pressed={!usesHttp} className={!usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('https')}><strong>Local HTTPS</strong><small>Port 5001 · valid certificate required</small></button>
+                <button type="button" aria-pressed={usesHttp} className={usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('http')}><strong>Local HTTP</strong><small>Port 5000 by default · not encrypted</small></button>
+                <button type="button" aria-pressed={!usesHttp} className={!usesHttp ? styles.protocolActive : ''} onClick={() => selectLocalProtocol('https')}><strong>Local HTTPS</strong><small>Port 5001 by default · valid certificate required</small></button>
               </div>
-              <Input id="nas-url" label="NAS address" value={url} onInput={event => updateNasAddress(event.currentTarget.value)} onBlur={finishNasAddress} error={addressError} placeholder={usesHttp ? 'http://000.000.000.000:5000' : 'https://your-nas.example.com:5001'} />
+              <Input id="nas-url" label="NAS address" helperText="Custom port? Add it after the address, for example nas.local:8080." value={url} onInput={event => updateNasAddress(event.currentTarget.value)} onBlur={finishNasAddress} error={addressError} placeholder={usesHttp ? 'http://000.000.000.000:5000' : 'https://your-nas.example.com:5001'} />
               <div className={styles.connectionHint}>
                 {usesHttp
                   ? <span>Not encrypted. Use only on a trusted local network.</span>

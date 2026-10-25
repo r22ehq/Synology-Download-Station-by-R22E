@@ -30,6 +30,21 @@ describe('normalizeNasUrl', () => {
     expect(result.baseUrl).toBe('https://nas.example.com:8443');
   });
 
+  it.each([
+    ['http://nas.example.com:80', 80],
+    ['https://nas.example.com:443', 443],
+    ['http://nas.example.com:8080', 8080],
+    ['https://nas.example.com:8443', 8443],
+  ])('preserves an explicitly selected port in %s', (address, port) => {
+    const result = normalizeNasUrl(address);
+    expect(result.port).toBe(port);
+    expect(result.baseUrl).toBe(address);
+  });
+
+  it('rejects port zero rather than replacing it with the default', () => {
+    expect(() => normalizeNasUrl('http://nas.example.com:0')).toThrow('NAS port must be between 1 and 65535.');
+  });
+
   it('handles IP with explicit port', () => {
     const result = normalizeNasUrl('http://10.0.0.5:5000');
     expect(result.protocol).toBe('http');
